@@ -5,6 +5,7 @@ import sys
 import os
 import os.path
 import errno
+from gen_common import *
 
 
 _GEN_SKELETON = """\
@@ -16,10 +17,17 @@ _GEN_SKELETON = """\
 #ifndef NDEBUG
 #include <cassert>
 #include <iostream>
-#define UNIMPLEMENTED_OPCODE(WHICH) \\
-    do {{ std::cerr << "unimplemented opcode: " << WHICH; assert(false); }} while (false)
+#include <iomanip>
+#define UNIMPLEMENTED_OPCODE(WHICH)                                 \\
+    do {{                                                           \\
+        std::cerr << "unimplemented opcode: 0x" << std::hex         \\
+                    << std::setfill('0') << std::setw(2) << (WHICH) \\
+                    << '\\n';                                       \\
+        GEM_UNREACHABLE();                                          \\
+    }}                                                              \\
+    while (false)
 #else
-#define UNIMPLEMENTED_OPCODE(...)
+#define UNIMPLEMENTED_OPCODE(...) GEM_UNREACHABLE()
 #endif
 
 namespace {{
@@ -54,13 +62,18 @@ def sanitize_name(op_name):
 
 def make_defs(ops):
     def make_def(op):
+        def make_inc_pc(op):
+            return '' if op.is_jump else 'cpu.reg.PC += {};'.format(op.op_count + 1)
         return """constexpr gem::op::Opcode {sname}{{{val}, {op_count}, {ticks}, "{name}"}};
 inline void run_{sname}(gem::CPU& cpu) {{
     (void)cpu;
     using namespace gem;
     {impl}
+    cpu.ticks += {ticks};
+    {inc_pc}
 }}""" \
-            .format(sname=sanitize_name(op.name), name=op.name, val=op.val, op_count=op.op_count, ticks=op.ticks, impl=op.implementation)
+            .format(sname=sanitize_name(op.name), name=op.name, val=op.val, op_count=op.op_count,
+                    ticks=op.ticks, impl=op.implementation, inc_pc=make_inc_pc(op))
     return '\n'.join(make_def(op) for op in ops)
 
 
@@ -76,33 +89,6 @@ def make_runners(ops):
     return '\n\t\t'.join(make_runner(op) for op in ops)
 
 
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
-
-
-def safe_open_w(path):
-    mkdir_p(os.path.dirname(path))
-    return open(path, 'w')
-
-
-def safe_touch(path):
-    mkdir_p(os.path.dirname(path))
-    open(path, 'w').close()
-
-
-def is_newer(file_name, than):
-    try:
-        return os.path.getmtime(file_name) > os.path.getmtime(than)
-    except OSError:
-        return True
-
-
 def main():
     if len(sys.argv) != 4:
         print 'usage: {} inputfile outputfile cachefile'.format(sys.argv[0])
@@ -116,7 +102,7 @@ def main():
     safe_touch(cache_file)
 
     ops_module = imp.load_source('opcode', sys.argv[1])
-    ops = sorted(list(ops_module.opcodes))
+    ops = sorted(list(ops_module.opcodes), key=lambda op: int(op.val, base=0))
     out = _GEN_SKELETON.format(defs=make_defs(
         ops), getters=make_getters(ops), runners=make_runners(ops))
     with safe_open_w(sys.argv[2]) as f:
