@@ -15,6 +15,11 @@ class Opcode(object):
         opcodes.add(self)
 
 
+####################################################################################################
+# 8-BIT LOADS ######################################################################################
+####################################################################################################
+
+
 Opcode('NOP', '0x00', 0, 4, '', False)
 
 
@@ -103,38 +108,115 @@ LDr1_r2('L', 'H', '0x6C')
 LDr1_r2('L', 'L', '0x6D')
 
 
-def LDr1_HL(r1, code):
+def LDr1_addrHL(r1, code):
     return Opcode('LD {}, (HL)'.format(r1), code, 0, 8, 'cpu.reg.{} = cpu.bus.read(cpu.reg.getHL());'.format(r1), False)
 
 
-LDr1_HL('A', '0x7E')
-LDr1_HL('B', '0x46')
-LDr1_HL('C', '0x4E')
-LDr1_HL('D', '0x56')
-LDr1_HL('E', '0x5E')
-LDr1_HL('H', '0x66')
-LDr1_HL('L', '0x6E')
+LDr1_addrHL('A', '0x7E')
+LDr1_addrHL('B', '0x46')
+LDr1_addrHL('C', '0x4E')
+LDr1_addrHL('D', '0x56')
+LDr1_addrHL('E', '0x5E')
+LDr1_addrHL('H', '0x66')
+LDr1_addrHL('L', '0x6E')
 
 
-def LDHL_r2(r2, code):
+def LDaddrHL_r2(r2, code):
     return Opcode('LD (HL), {}'.format(r2), code, 0, 8, 'cpu.bus.write(cpu.reg.getHL(), cpu.reg.{});'.format(r2), False)
 
 
-LDHL_r2('B', '0x70')
-LDHL_r2('C', '0x71')
-LDHL_r2('D', '0x72')
-LDHL_r2('E', '0x73')
-LDHL_r2('H', '0x74')
-LDHL_r2('L', '0x75')
+LDaddrHL_r2('B', '0x70')
+LDaddrHL_r2('C', '0x71')
+LDaddrHL_r2('D', '0x72')
+LDaddrHL_r2('E', '0x73')
+LDaddrHL_r2('H', '0x74')
+LDaddrHL_r2('L', '0x75')
 Opcode('LD (HL), n', '0x36', 1, 12,
        'cpu.bus.write(cpu.reg.getHL(), cpu.current()[1]);', False)
 
 
+Opcode('LD A, (C)', '0xF2', 0, 8,
+       'cpu.reg.A = cpu.bus.read(0xFF00 + cpu.reg.C);', False)
+Opcode('LD (C), A', '0xE2', 0, 8,
+       'cpu.bus.write(0xFF00 + cpu.reg.C, cpu.reg.A);', False)
+
+Opcode('LDD A, (HL)', '0x3A', 0, 8, """cpu.reg.A = cpu.bus.read(cpu.reg.getHL());
+    cpu.reg.decHL();""", False)
+Opcode('LDD (HL), A', '0x32', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);
+    cpu.reg.decHL();""", False)
+Opcode('LDI A, (HL)', '0x2A', 0, 8, """cpu.reg.A = cpu.bus.read(cpu.reg.getHL());
+    cpu.reg.incHL();""", False)
+Opcode('LDI (HL), A', '0x22', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);
+    cpu.reg.incHL();""", False)
+Opcode('LDH (n), A', '0xE0', 1, 8,
+       'cpu.bus.write(0xFF00 + cpu.current()[1], cpu.reg.A);', False)
+Opcode('LDH A, (n)', '0xF0', 1, 8,
+       'cpu.reg.A = cpu.bus.read(0xFF00 + cpu.current()[1]);', False)
+
+####################################################################################################
+# 16-BIT LOADS #####################################################################################
+####################################################################################################
+
+
+def LDn_nn_16(r, code):
+    return Opcode('LD {}, nn'.format(r), code, 2, 12, """u16 val;
+    std::memcpy(&val, cpu.current() + 1, 2);
+    cpu.reg.set{}(val);""".format(r), False)
+
+
+LDn_nn_16('BC', '0x01')
+LDn_nn_16('DE', '0x11')
+LDn_nn_16('HL', '0x21')
+LDn_nn_16('SP', '0x31')
+
+Opcode('LD SP, HL', '0xF9', 0, 8, 'cpu.reg.setSP(cpu.reg.getHL());', False)
+Opcode('LDHL SP, n', '0xF8', 1, 12, """i8 operand;
+    std::memcpy(&operand, cpu.current() + 1, 1);
+    const u16 addr = cpu.reg.getSP() + operand;
+    cpu.reg.setHL(cpu.bus.read(addr));
+    cpu.flags.resetZ();
+    cpu.flags.resetN();
+    // TODO more flags
+""", False)
+
+Opcode('LD (nn), SP', '0x08', 1, 20, """u16 addr;
+    std::memcpy(&addr, cpu.current() + 1, 2);
+    cpu.bus.write(addr, cpu.reg.getSP());""", False)
+
+
+def PUSH_nn(r, code):
+    return Opcode('PUSH {}'.format(r), code, 0, 16, """cpu.bus.write(cpu.reg.SP, cpu.reg.get{}());
+    cpu.reg.SP -= 2;
+    """.format(r), False)
+
+
+PUSH_nn('AF', '0xF5')
+PUSH_nn('BC', '0xC5')
+PUSH_nn('DE', '0xD5')
+PUSH_nn('HL', '0xE5')
+
+
+def POP_nn(r, code):
+    return Opcode('POP {}'.format(r), code, 0, 12, """const u8* const ptr = cpu.bus.ptr(cpu.reg.SP + 2);
+    u16 val;
+    std::memcpy(&val, ptr, 2);
+    cpu.reg.set{}(val);
+    cpu.reg.SP += 2;
+    """.format(r), False)
+
+
+POP_nn('AF', '0xF1')
+POP_nn('BC', '0xC1')
+POP_nn('DE', '0xD1')
+POP_nn('HL', '0xE1')
+
 # tools for adding new opcodes
+
+
 def gen(s):
     ts = [s for s in s.split(' ') if s]
     ps = ts[1].split(',')
-    return "LDr1_HL('{}', '0x{}', False)".format(ps[0], ts[2])
+    return "LDr1_addrHL('{}', '0x{}', False)".format(ps[0], ts[2])
 
 
 def gens(ss):

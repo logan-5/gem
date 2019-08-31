@@ -36,16 +36,11 @@ def chunks(l, n):
 
 
 def main():
-    if len(sys.argv) != 4:
-        print 'usage: {} inputfile outputfile cachefile'.format(sys.argv[0])
+    if len(sys.argv) != 3:
+        print 'usage: {} inputfile outputfile'.format(sys.argv[0])
         exit(1)
 
-    cache_file = sys.argv[3]
-    if not is_newer(__file__, cache_file) and not is_newer(sys.argv[1], cache_file):
-        print 'not regenerating bootstrap'
-        exit(0)
-    print 'regenerating bootstrap...'
-    safe_touch(cache_file)
+    print "generating '{}' from '{}'".format(sys.argv[2], sys.argv[1])
 
     buffer = open(sys.argv[1], r'r').read()
     as_ints = [hex(ord(byte)) for byte in buffer]
@@ -54,6 +49,7 @@ def main():
 
     with safe_open_w(sys.argv[2]) as f:
         f.write(out)
+    print 'done'
 
 
 if __name__ == "__main__":

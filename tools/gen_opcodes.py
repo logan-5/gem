@@ -18,13 +18,13 @@ _GEN_SKELETON = """\
 #include <cassert>
 #include <iostream>
 #include <iomanip>
-#define UNIMPLEMENTED_OPCODE(WHICH)                                 \\
-    do {{                                                           \\
-        std::cerr << "unimplemented opcode: 0x" << std::hex         \\
-                    << std::setfill('0') << std::setw(2) << (WHICH) \\
-                    << '\\n';                                       \\
-        GEM_UNREACHABLE();                                          \\
-    }}                                                              \\
+#define UNIMPLEMENTED_OPCODE(WHICH)                                  \\
+    do {{                                                            \\
+        std::cerr << "unimplemented opcode: 0x" << std::setfill('0') \\
+                    << std::setw(2) << std::hex << int(WHICH)        \\
+                    << '\\n';                                        \\
+        GEM_UNREACHABLE();                                           \\
+    }}                                                               \\
     while (false)
 #else
 #define UNIMPLEMENTED_OPCODE(...) GEM_UNREACHABLE()
@@ -90,24 +90,18 @@ def make_runners(ops):
 
 
 def main():
-    if len(sys.argv) != 4:
-        print 'usage: {} inputfile outputfile cachefile'.format(sys.argv[0])
+    if len(sys.argv) != 3:
+        print 'usage: {} inputfile outputfile'.format(sys.argv[0])
         exit(1)
 
-    cache_file = sys.argv[3]
-    if not is_newer(__file__, cache_file) and not is_newer(sys.argv[1], cache_file):
-        print 'not regenerating opcodes'
-        exit(0)
-    print 'regenerating opcodes...'
-    safe_touch(cache_file)
-
+    print "generating '{}' from '{}'".format(sys.argv[2], sys.argv[1])
     ops_module = imp.load_source('opcode', sys.argv[1])
     ops = sorted(list(ops_module.opcodes), key=lambda op: int(op.val, base=0))
     out = _GEN_SKELETON.format(defs=make_defs(
         ops), getters=make_getters(ops), runners=make_runners(ops))
     with safe_open_w(sys.argv[2]) as f:
         f.write(out)
-    print 'wrote opcodes to {}'.format(sys.argv[2])
+    print "done"
 
 
 if __name__ == "__main__":

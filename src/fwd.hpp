@@ -27,6 +27,8 @@ namespace gem {
 using u8 = unsigned char;
 using u16 = std::uint16_t;
 
+using i8 = signed char;
+
 }  // namespace gem
 
 #endif

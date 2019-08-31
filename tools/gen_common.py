@@ -23,6 +23,16 @@ def safe_touch(path):
     open(path, 'w').close()
 
 
+def safe_rm(path):
+    try:
+        os.remove(path)
+    except OSError as exc:
+        if exc.errno == os.errno.ENOENT:
+            pass
+        else:
+            raise
+
+
 def is_newer(file_name, than):
     try:
         return os.path.getmtime(file_name) > os.path.getmtime(than)

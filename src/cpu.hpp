@@ -17,11 +17,15 @@ struct Registers {
         std::memcpy(&ret, reinterpret_cast<const u8*>(FIRST), 2); \
         return ret;                                               \
     }                                                             \
-    void set##FIRST##SECOND(u16 fs) {                             \
+    void set##FIRST##SECOND(const u16 fs) {                       \
         const u8* const p = reinterpret_cast<const u8*>(fs);      \
         std::memcpy(&FIRST, p + 0, 1);                            \
         std::memcpy(&SECOND, p + 1, 1);                           \
-    }
+    }                                                             \
+    void inc##FIRST##SECOND() {                                   \
+        set##FIRST##SECOND(get##FIRST##SECOND() - 1);             \
+    }                                                             \
+    void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
     REGISTER_PAIR(A, F)
     REGISTER_PAIR(B, C)
     REGISTER_PAIR(D, E)
@@ -29,6 +33,17 @@ struct Registers {
 
     u16 SP;
     u16 PC = 0;
+
+    // for symmetry with the 16-bit registers as macro'd out above
+    u16 getSP() const { return SP; }
+    void setSP(const u16 sp) { SP = sp; }
+    void incSP() { ++SP; }
+    void decSP() { --SP; }
+
+    u16 getPC() const { return PC; }
+    void setPC(const u16 pc) { PC = pc; }
+    void incPC() { ++PC; }
+    void decPC() { --PC; }
 
 #undef REGISTER_PAIR
 };
