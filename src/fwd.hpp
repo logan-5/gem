@@ -8,6 +8,7 @@
 #endif
 
 #if GEM_ENABLE_ASSERTS
+#include <cassert>
 #define GEM_ASSERT(...) assert(__VA_ARGS__)
 #else
 #define GEM_ASSERT(...) \

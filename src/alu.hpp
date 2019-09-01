@@ -216,7 +216,7 @@ inline void rlc(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
 
     operand <<= 1;
-    operand |= bit7;
+    operand |= bit7 ? 1 : 0;
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
@@ -229,7 +229,7 @@ inline void rl(u8& operand, CPU& cpu) {
     const bool oldCarry = cpu.flags.getC();
 
     operand <<= 1;
-    operand |= oldCarry;
+    operand |= oldCarry ? 1 : 0;
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
@@ -276,7 +276,7 @@ inline void sra(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
     const bool bit0 = bitwise::test<0>(operand);
     operand >>= 1;
-    operand |= bit7;
+    operand |= bit7 ? 1 : 0;
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
