@@ -1,6 +1,7 @@
 #ifndef GEM_CPU_HPP
 #define GEM_CPU_HPP
 
+#include "bitwise.hpp"
 #include "fwd.hpp"
 #include "mem.hpp"
 #include "opcode.hpp"
@@ -10,21 +11,21 @@
 namespace gem {
 
 struct Registers {
-#define REGISTER_PAIR(FIRST, SECOND)                              \
-    u8 FIRST, SECOND;                                             \
-    u16 get##FIRST##SECOND() const {                              \
-        u16 ret;                                                  \
-        std::memcpy(&ret, reinterpret_cast<const u8*>(FIRST), 2); \
-        return ret;                                               \
-    }                                                             \
-    void set##FIRST##SECOND(const u16 fs) {                       \
-        const u8* const p = reinterpret_cast<const u8*>(fs);      \
-        std::memcpy(&FIRST, p + 0, 1);                            \
-        std::memcpy(&SECOND, p + 1, 1);                           \
-    }                                                             \
-    void inc##FIRST##SECOND() {                                   \
-        set##FIRST##SECOND(get##FIRST##SECOND() - 1);             \
-    }                                                             \
+#define REGISTER_PAIR(FIRST, SECOND)                               \
+    u8 FIRST, SECOND;                                              \
+    u16 get##FIRST##SECOND() const {                               \
+        u16 ret;                                                   \
+        std::memcpy(&ret, reinterpret_cast<const u8*>(&FIRST), 2); \
+        return ret;                                                \
+    }                                                              \
+    void set##FIRST##SECOND(const u16 fs) {                        \
+        const u8* const p = reinterpret_cast<const u8*>(&fs);      \
+        std::memcpy(&FIRST, p + 0, 1);                             \
+        std::memcpy(&SECOND, p + 1, 1);                            \
+    }                                                              \
+    void inc##FIRST##SECOND() {                                    \
+        set##FIRST##SECOND(get##FIRST##SECOND() - 1);              \
+    }                                                              \
     void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
     REGISTER_PAIR(A, F)
     REGISTER_PAIR(B, C)
@@ -68,15 +69,15 @@ struct FlagRegister {
    private:
     template <unsigned Bit>
     bool get() const {
-        return (r >> Bit) & 1;
+        return bitwise::test<Bit>(r);
     }
     template <unsigned Bit>
     void set() {
-        r |= (1 << Bit);
+        bitwise::set<Bit>(r);
     }
     template <unsigned Bit>
     void reset() {
-        r &= ~(1 << Bit);
+        bitwise::reset<Bit>(r);
     }
     u8 r = 0;
 };

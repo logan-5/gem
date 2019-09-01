@@ -210,13 +210,122 @@ POP_nn('BC', '0xC1')
 POP_nn('DE', '0xD1')
 POP_nn('HL', '0xE1')
 
+####################################################################################################
+# 8-BIT ALU ########################################################################################
+####################################################################################################
+
+
+def ADD(r, code):
+    return Opcode('ADD A, {}'.format(r), code, 0, 4, 'alu::add(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+ADD('A', '0x87')
+ADD('B', '0x80')
+ADD('C', '0x81')
+ADD('D', '0x82')
+ADD('E', '0x83')
+ADD('H', '0x84')
+ADD('L', '0x85')
+Opcode('ADD A, (HL)', '0x86', 0, 8,
+       'alu::add(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def ADC(r, code):
+    return Opcode('ADC A, {}'.format(r), code, 0, 4, 'alu::adc(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+ADC('A', '0x8F')
+ADC('B', '0x88')
+ADC('C', '0x89')
+ADC('D', '0x8A')
+ADC('E', '0x8B')
+ADC('H', '0x8C')
+ADC('L', '0x8D')
+Opcode('ADC A, (HL)', '0x8E', 0, 8,
+       'alu::adc(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def SUB(r, code):
+    return Opcode('SUB A, {}'.format(r), code, 0, 4, 'alu::sub(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+SUB('A', '0x97')
+SUB('B', '0x90')
+SUB('C', '0x91')
+SUB('D', '0x92')
+SUB('E', '0x93')
+SUB('H', '0x94')
+SUB('L', '0x95')
+Opcode('SUB A, (HL)', '0x96', 0, 8,
+       'alu::sub(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def SBC(r, code):
+    return Opcode('SBC A, {}'.format(r), code, 0, 4, 'alu::sbc(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+SBC('A', '0x9F')
+SBC('B', '0x98')
+SBC('C', '0x99')
+SBC('D', '0x9A')
+SBC('E', '0x9B')
+SBC('H', '0x9C')
+SBC('L', '0x9D')
+Opcode('SBC A, (HL)', '0x9E', 0, 8,
+       'alu::sbc(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def AND(r, code):
+    return Opcode('AND {}'.format(r), code, 0, 4, 'alu::and_(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+AND('A', '0xA7')
+AND('B', '0xA0')
+AND('C', '0xA1')
+AND('D', '0xA2')
+AND('E', '0xA3')
+AND('H', '0xA4')
+AND('L', '0xA5')
+Opcode('AND (HL)', '0xA6', 0, 8,
+       'alu::and_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def OR(r, code):
+    return Opcode('OR {}'.format(r), code, 0, 4, 'alu::or_(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+OR('A', '0xB7')
+OR('B', '0xB0')
+OR('C', '0xB1')
+OR('D', '0xB2')
+OR('E', '0xB3')
+OR('H', '0xB4')
+OR('L', '0xB5')
+Opcode('OR (HL)', '0xB6', 0, 8,
+       'alu::or_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def XOR(r, code):
+    return Opcode('XOR {}'.format(r), code, 0, 4, 'alu::xor_(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+XOR('A', '0xAF')
+XOR('B', '0xA8')
+XOR('C', '0xA9')
+XOR('D', '0xAA')
+XOR('E', '0xAB')
+XOR('H', '0xAC')
+XOR('L', '0xAD')
+Opcode('XOR (HL)', '0xAE', 0, 8,
+       'alu::xor_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
 # tools for adding new opcodes
 
 
 def gen(s):
     ts = [s for s in s.split(' ') if s]
     ps = ts[1].split(',')
-    return "LDr1_addrHL('{}', '0x{}', False)".format(ps[0], ts[2])
+    return "ADD('{}', '0x{}', False)".format(ps[0], ts[2])
 
 
 def gens(ss):

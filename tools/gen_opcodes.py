@@ -12,6 +12,7 @@ _GEN_SKELETON = """\
 // THIS FILE IS GENERATED
 
 #include "opcode.hpp"
+#include "alu.hpp"
 #include "cpu.hpp"
 
 #ifndef NDEBUG
