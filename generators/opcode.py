@@ -173,14 +173,8 @@ LDn_nn_16('HL', '0x21')
 LDn_nn_16('SP', '0x31')
 
 Opcode('LD SP, HL', '0xF9', 0, 8, 'cpu.reg.setSP(cpu.reg.getHL());', False)
-Opcode('LDHL SP, n', '0xF8', 1, 12, """i8 operand;
-    std::memcpy(&operand, cpu.current() + 1, 1);
-    const u16 addr = cpu.reg.getSP() + operand;
-    cpu.reg.setHL(cpu.bus.read(addr));
-    cpu.flags.resetZ();
-    cpu.flags.resetN();
-    // TODO more flags
-""", False)
+Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.reg.SP, cpu.current()[0], cpu);
+    cpu.reg.setHL(cpu.bus.read(addr));""", False)
 
 Opcode('LD (nn), SP', '0x08', 1, 20, """u16 addr;
     std::memcpy(&addr, cpu.current() + 1, 2);
@@ -219,7 +213,7 @@ POP_nn('HL', '0xE1')
 
 
 def ADD(r, code):
-    return Opcode('ADD A, {}'.format(r), code, 0, 4, 'alu::add(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('ADD A, {}'.format(r), code, 0, 4, 'alu::add8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
 
 
 ADD('A', '0x87')
@@ -230,11 +224,11 @@ ADD('E', '0x83')
 ADD('H', '0x84')
 ADD('L', '0x85')
 Opcode('ADD A, (HL)', '0x86', 0, 8,
-       'alu::add(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::add8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 
 
 def ADC(r, code):
-    return Opcode('ADC A, {}'.format(r), code, 0, 4, 'alu::adc(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('ADC A, {}'.format(r), code, 0, 4, 'alu::adc8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
 
 
 ADC('A', '0x8F')
@@ -245,11 +239,11 @@ ADC('E', '0x8B')
 ADC('H', '0x8C')
 ADC('L', '0x8D')
 Opcode('ADC A, (HL)', '0x8E', 0, 8,
-       'alu::adc(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::adc8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 
 
 def SUB(r, code):
-    return Opcode('SUB A, {}'.format(r), code, 0, 4, 'alu::sub(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('SUB A, {}'.format(r), code, 0, 4, 'alu::sub8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
 
 
 SUB('A', '0x97')
@@ -260,11 +254,11 @@ SUB('E', '0x93')
 SUB('H', '0x94')
 SUB('L', '0x95')
 Opcode('SUB A, (HL)', '0x96', 0, 8,
-       'alu::sub(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::sub8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 
 
 def SBC(r, code):
-    return Opcode('SBC A, {}'.format(r), code, 0, 4, 'alu::sbc(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('SBC A, {}'.format(r), code, 0, 4, 'alu::sbc8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
 
 
 SBC('A', '0x9F')
@@ -275,7 +269,7 @@ SBC('E', '0x9B')
 SBC('H', '0x9C')
 SBC('L', '0x9D')
 Opcode('SBC A, (HL)', '0x9E', 0, 8,
-       'alu::sbc(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::sbc8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 
 
 def AND(r, code):
@@ -322,9 +316,95 @@ XOR('L', '0xAD')
 Opcode('XOR (HL)', '0xAE', 0, 8,
        'alu::xor_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 
+
+def CP(r, code):
+    return Opcode('CP {}'.format(r), code, 0, 4, 'alu::cp(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+
+
+CP('A', '0xBF')
+CP('B', '0xB8')
+CP('C', '0xB9')
+CP('D', '0xBA')
+CP('E', '0xBB')
+CP('H', '0xBC')
+CP('L', '0xBD')
+Opcode('CP (HL)', '0xBE', 0, 8,
+       'alu::cp(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+
+def INC(r, code):
+    return Opcode('INC {}'.format(r), code, 0, 4, 'alu::inc(cpu.reg.{}, cpu);'.format(r), False)
+
+
+INC('A', '0x3C')
+INC('B', '0x04')
+INC('C', '0x0C')
+INC('D', '0x14')
+INC('E', '0x1C')
+INC('H', '0x24')
+INC('L', '0x2C')
+Opcode('INC (HL)', '0x34', 0, 12, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+        alu::inc(tmp, cpu);
+        cpu.bus.write(cpu.reg.getHL(), tmp);""", False)
+
+
+def DEC(r, code):
+    return Opcode('DEC {}'.format(r), code, 0, 4, 'alu::dec(cpu.reg.{}, cpu);'.format(r), False)
+
+
+DEC('A', '0x3D')
+DEC('B', '0x05')
+DEC('C', '0x0D')
+DEC('D', '0x15')
+DEC('E', '0x1D')
+DEC('H', '0x25')
+DEC('L', '0x2D')
+Opcode('DEC (HL)', '0x35', 0, 12, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+        alu::dec(tmp, cpu);
+        cpu.bus.write(cpu.reg.getHL(), tmp);""", False)
+
+####################################################################################################
+# 16-BIT ARITHMETIC ################################################################################
+####################################################################################################
+
+
+def ADD_HL(n, code):
+    return Opcode('ADD HL, {}'.format(n), code, 0, 8, 'cpu.reg.setHL(alu::add16(cpu.reg.getHL(), cpu.reg.get{}(), cpu));'.format(n), False)
+
+
+ADD_HL('BC', '0x09')
+ADD_HL('DE', '0x19')
+ADD_HL('HL', '0x29')
+ADD_HL('SP', '0x39')
+
+Opcode('ADD SP, n', '0xE8', 2, 16, """u16 tmp;
+        std::memcpy(&tmp, cpu.current(), 2);
+        cpu.reg.SP = alu::add16Signed(cpu.reg.SP, tmp, cpu);""", False)
+
+
+def INC_NN(nn, code):
+    return Opcode('INC {}'.format(nn), code, 0, 8, 'cpu.reg.inc{}();'.format(nn), False)
+
+
+INC_NN('BC', '0x03')
+INC_NN('DE', '0x13')
+INC_NN('HL', '0x23')
+INC_NN('SP', '0x33')
+
+
+def DEC_NN(nn, code):
+    return Opcode('DEC {}'.format(nn), code, 0, 8, 'cpu.reg.dec{}();'.format(nn), False)
+
+
+DEC_NN('BC', '0x0B')
+DEC_NN('DE', '0x1B')
+DEC_NN('HL', '0x2B')
+DEC_NN('SP', '0x3B')
+
 ####################################################################################################
 # MISCELLANEOUS ####################################################################################
 ####################################################################################################
+
 
 two_byte_prefixes.add('0xCB')
 
@@ -343,6 +423,208 @@ SWAP('L', '0x35')
 Opcode('SWAP (HL)', '0xCB', 1, 8, """u8 temp = cpu.bus.read(cpu.reg.getHL());
         alu::swapNybbles(temp, cpu);
         cpu.bus.write(cpu.reg.getHL(), temp);""", False, '0x36')
+
+Opcode('DAA', '0x27', 0, 4, 'alu::decimalAdjust(cpu.reg.A, cpu);', False)
+
+Opcode('CPL', '0x2F', 0, 4, 'alu::complement(cpu.reg.A, cpu);', False)
+
+Opcode('CCF', '0x3F', 0, 4, """cpu.flags.resetN();
+        cpu.flags.resetH();
+        cpu.flags.toggleC();""", False)
+
+Opcode('SCF', '0x37', 0, 4, """cpu.flags.resetN();
+        cpu.flags.resetH();
+        cpu.flags.setC();""", False)
+
+####################################################################################################
+# ROTATES & SHIFTS #################################################################################
+####################################################################################################
+
+Opcode('RLCA', '0x07', 0, 4, 'alu::rlc(cpu.reg.A, cpu);', False)
+Opcode('RLA', '0x17', 0, 4, 'alu::rl(cpu.reg.A, cpu);', False)
+
+
+def RLC_n(n, code):
+    return Opcode('RLC {}'.format(n), '0xCB', 0, 8, 'alu::rlc(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+RLC_n('A', '0x07')
+RLC_n('B', '0x00')
+RLC_n('C', '0x01')
+RLC_n('D', '0x02')
+RLC_n('E', '0x03')
+RLC_n('H', '0x04')
+RLC_n('L', '0x05')
+Opcode('RLC (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::rlc(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x06')
+
+
+def RL_n(n, code):
+    return Opcode('RL {}'.format(n), '0xCB', 0, 8, 'alu::rl(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+RL_n('A', '0x17')
+RL_n('B', '0x10')
+RL_n('C', '0x11')
+RL_n('D', '0x12')
+RL_n('E', '0x13')
+RL_n('H', '0x14')
+RL_n('L', '0x15')
+Opcode('RL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::rl(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x16')
+
+
+def RRC_n(n, code):
+    return Opcode('RRC {}'.format(n), '0xCB', 0, 8, 'alu::rrc(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+RRC_n('A', '0x0F')
+RRC_n('B', '0x08')
+RRC_n('C', '0x09')
+RRC_n('D', '0x0A')
+RRC_n('E', '0x0B')
+RRC_n('H', '0x0C')
+RRC_n('L', '0x0D')
+Opcode('RRC (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::rrc(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x0E')
+
+
+def RR_n(n, code):
+    return Opcode('RR {}'.format(n), '0xCB', 0, 8, 'alu::rr(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+RR_n('A', '0x1F')
+RR_n('B', '0x18')
+RR_n('C', '0x19')
+RR_n('D', '0x1A')
+RR_n('E', '0x1B')
+RR_n('H', '0x1C')
+RR_n('L', '0x1D')
+Opcode('RR (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::rr(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x1E')
+
+
+def SLA_n(n, code):
+    return Opcode('SLA {}'.format(n), '0xCB', 0, 8, 'alu::sla(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+SLA_n('A', '0x27')
+SLA_n('B', '0x20')
+SLA_n('C', '0x21')
+SLA_n('D', '0x22')
+SLA_n('E', '0x23')
+SLA_n('H', '0x24')
+SLA_n('L', '0x25')
+Opcode('SLA (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::sla(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x26')
+
+
+def SRA_n(n, code):
+    return Opcode('SRA {}'.format(n), '0xCB', 0, 8, 'alu::sra(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+SRA_n('A', '0x2F')
+SRA_n('B', '0x28')
+SRA_n('C', '0x29')
+SRA_n('D', '0x2A')
+SRA_n('E', '0x2B')
+SRA_n('H', '0x2C')
+SRA_n('L', '0x2D')
+Opcode('SRA (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::sra(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x2E')
+
+
+def SRL_n(n, code):
+    return Opcode('SRL {}'.format(n), '0xCB', 0, 8, 'alu::srl(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+SRL_n('A', '0x3F')
+SRL_n('B', '0x38')
+SRL_n('C', '0x39')
+SRL_n('D', '0x3A')
+SRL_n('E', '0x3B')
+SRL_n('H', '0x3C')
+SRL_n('L', '0x3D')
+Opcode('SRL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    alu::srl(tmp, cpu);
+    cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x3E')
+
+####################################################################################################
+# BIT OPCODES ######################################################################################
+####################################################################################################
+
+
+def BIT(n, code):
+    for b in xrange(0, 8):
+        code_i = int(code, base=0) + b * 8
+        Opcode('BIT {1}, {0}'.format(n, b), '0xCB', 1, 8,
+               'alu::bit<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
+
+
+BIT('A', '0x47')
+BIT('B', '0x40')
+BIT('C', '0x41')
+BIT('D', '0x42')
+BIT('E', '0x43')
+BIT('H', '0x44')
+BIT('L', '0x45')
+for b in xrange(0, 8):
+    code_i = int('0x46', base=0) + b * 8
+    Opcode('BIT {}, (HL)'.format(b), '0xCB', 1, 16,
+           'alu::bit<{}>(cpu.bus.read(cpu.reg.getHL()), cpu);'.format(b), False, hex(code_i))
+
+
+def SET(n, code):
+    for b in xrange(0, 8):
+        code_i = int(code, base=0) + b * 8
+        Opcode('SET {1}, {0}'.format(n, b), '0xCB', 1, 8,
+               'alu::set<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
+
+
+SET('A', '0xC7')
+SET('B', '0xC0')
+SET('C', '0xC1')
+SET('D', '0xC2')
+SET('E', '0xC3')
+SET('H', '0xC4')
+SET('L', '0xC5')
+for b in xrange(0, 8):
+    code_i = int('0xC6', base=0) + b * 8
+    Opcode('SET {}, (HL)'.format(b), '0xCB', 1, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+        alu::set<{}>(tmp, cpu);
+        cpu.bus.write(cpu.reg.getHL(), tmp);""".format(b), False, hex(code_i))
+
+
+def RES(n, code):
+    for b in xrange(0, 8):
+        code_i = int(code, base=0) + b * 8
+    Opcode('RES {1}, {0}'.format(n, b), '0xCB', 1, 8,
+           'alu::res<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
+
+
+RES('A', '0x87')
+RES('B', '0x80')
+RES('C', '0x81')
+RES('D', '0x82')
+RES('E', '0x83')
+RES('H', '0x84')
+RES('L', '0x85')
+for b in xrange(0, 8):
+    code_i = int('0x86', base=0) + b * 8
+    Opcode('RES {}, (HL)'.format(b), '0xCB', 1, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+        alu::res<{}>(tmp, cpu);
+        cpu.bus.write(cpu.reg.getHL(), tmp);""".format(b), False, hex(code_i))
+
+####################################################################################################
+# JUMPS ############################################################################################
+####################################################################################################
+
 
 # tools for adding new opcodes
 

@@ -52,18 +52,22 @@ struct Registers {
 struct FlagRegister {
     bool getZ() const { return get<7>(); }
     void setZ() { set<7>(); }
+    void toggleZ() { toggle<7>(); }
     void resetZ() { reset<7>(); }
 
     bool getN() const { return get<6>(); }
     void setN() { set<6>(); }
+    void toggleN() { toggle<6>(); }
     void resetN() { reset<6>(); }
 
     bool getH() const { return get<5>(); }
     void setH() { set<5>(); }
+    void toggleH() { toggle<5>(); }
     void resetH() { reset<5>(); }
 
     bool getC() const { return get<4>(); }
     void setC() { set<4>(); }
+    void toggleC() { toggle<4>(); }
     void resetC() { reset<4>(); }
 
    private:
@@ -74,6 +78,10 @@ struct FlagRegister {
     template <unsigned Bit>
     void set() {
         bitwise::set<Bit>(r);
+    }
+    template <unsigned Bit>
+    void toggle() {
+        bitwise::toggle<Bit>(r);
     }
     template <unsigned Bit>
     void reset() {

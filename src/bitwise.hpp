@@ -5,17 +5,33 @@
 
 namespace gem {
 namespace bitwise {
+inline constexpr void set(u8& b, unsigned bit) {
+    b |= 1 << bit;
+}
 template <unsigned Bit>
 void set(u8& b) {
-    b |= 1 << Bit;
+    set(b, Bit);
+}
+inline constexpr void reset(u8& b, unsigned bit) {
+    b &= ~(1 << bit);
 }
 template <unsigned Bit>
 void reset(u8& b) {
-    b &= ~(1 << Bit);
+    reset(b, Bit);
+}
+inline constexpr void toggle(u8& b, unsigned bit) {
+    b ^= 1 << bit;
+}
+template <unsigned Bit>
+void toggle(u8& b) {
+    toggle(b, Bit);
+}
+inline constexpr bool test(const u8 b, unsigned bit) {
+    return (b >> bit) & 1;
 }
 template <unsigned Bit>
 bool test(const u8 b) {
-    return (b >> Bit) & 1;
+    return test(b, Bit);
 }
 }  // namespace bitwise
 }  // namespace gem

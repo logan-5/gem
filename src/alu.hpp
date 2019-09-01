@@ -28,11 +28,11 @@ inline void add8_impl(u8& lhs, u16 rhs, CPU& cpu) {
 }
 }  // namespace detail
 
-inline void add(u8& lhs, u8 rhs, CPU& cpu) {
+inline void add8(u8& lhs, u8 rhs, CPU& cpu) {
     detail::add8_impl(lhs, rhs, cpu);
 }
 
-inline void adc(u8& lhs, u8 rhs, CPU& cpu) {
+inline void adc8(u8& lhs, u8 rhs, CPU& cpu) {
     detail::add8_impl(lhs, u16(rhs) + cpu.flags.getC(), cpu);
 }
 
@@ -47,15 +47,15 @@ inline void sub8_impl(u8& lhs, u16 rhs, CPU& cpu) {
 
     diff == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.setN();
-    carry ? cpu.flags.setC() : cpu.flags.resetC();
-    halfC ? cpu.flags.setH() : cpu.flags.resetH();
+    carry ? cpu.flags.resetC() : cpu.flags.setC();
+    halfC ? cpu.flags.resetH() : cpu.flags.setH();
 }
 }  // namespace detail
 
-inline void sub(u8& lhs, u8 rhs, CPU& cpu) {
+inline void sub8(u8& lhs, u8 rhs, CPU& cpu) {
     detail::sub8_impl(lhs, rhs, cpu);
 }
-inline void sbc(u8& lhs, u8 rhs, CPU& cpu) {
+inline void sbc8(u8& lhs, u8 rhs, CPU& cpu) {
     detail::sub8_impl(lhs, u16(rhs) + cpu.flags.getC(), cpu);
 }
 
@@ -100,6 +100,217 @@ inline void swapNybbles(u8& n, CPU& cpu) {
     cpu.flags.resetC();
 
     n = result;
+}
+
+inline void cp(u8 lhs, u8 rhs, CPU& cpu) {
+    if (lhs == rhs) {
+        cpu.flags.setZ();
+        cpu.flags.setH();
+        cpu.flags.setC();
+    } else {
+        cpu.flags.resetZ();
+
+        lhs < rhs ? cpu.flags.resetC() : cpu.flags.setC();
+        const u8 noBorrow = lhs ^ rhs;
+        const u8 diff = lhs - rhs;
+        const u8 borrowResult = noBorrow ^ diff;
+        const auto halfCarry = borrowResult & 0b0001'0000;
+        halfCarry ? cpu.flags.resetH() : cpu.flags.setH();
+    }
+    cpu.flags.setN();
+}
+
+inline void inc(u8& operand, CPU& cpu) {
+    using namespace bitwise;
+
+    const u8 result = operand + 1;
+    const auto halfCarry = test<4>(result) ^ test<4>(operand);
+
+    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
+    // C not affected
+
+    operand = result;
+}
+
+inline void dec(u8& operand, CPU& cpu) {
+    using namespace bitwise;
+
+    const u8 result = operand - 1;
+    const bool halfCarry = test<4>(result) ^ test<4>(operand);
+
+    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.setN();
+    halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
+    // C not affected
+
+    operand = result;
+}
+
+[[nodiscard]] inline u16 add16(u16 lhs, u16 rhs, CPU& cpu) {
+    const u32 lhs32 = lhs, rhs32 = rhs;
+    const u32 result = lhs32 + rhs32;
+    const u32 noCarry = lhs32 ^ rhs32;
+    const u32 carryResult = result ^ noCarry;
+
+    const auto carry = carryResult & 0b1'0000'0000'0000'0000;
+    const auto halfC = carryResult & 0b0'0001'0000'0000'0000;
+
+    // Z not affected
+    cpu.flags.resetN();
+    carry ? cpu.flags.setC() : cpu.flags.resetC();
+    halfC ? cpu.flags.setH() : cpu.flags.resetH();
+
+    return result;
+}
+
+[[nodiscard]] inline u16 add16Signed(u16 lhs, u16 rhs, CPU& cpu) {
+    const i32 lhs_signed{lhs};
+    i32 rhs_signed;
+    std::memcpy(&rhs_signed, &rhs, 2);
+
+    const i32 result = lhs_signed + rhs_signed;
+    const u32 noCarry = lhs ^ rhs;
+    u32 unsignedResult;
+    std::memcpy(&unsignedResult, &result, 2);
+    const u32 carryResult = noCarry ^ unsignedResult;
+
+    const auto carry = carryResult & (1 << 31);
+    const auto halfC = carryResult & 0b0'0001'0000'0000'0000;
+
+    cpu.flags.resetZ();
+    cpu.flags.resetN();
+    if (rhs_signed < 0) {
+        carry ? cpu.flags.resetC() : cpu.flags.setC();
+        halfC ? cpu.flags.resetH() : cpu.flags.setH();
+    } else {
+        carry ? cpu.flags.setC() : cpu.flags.resetC();
+        halfC ? cpu.flags.setH() : cpu.flags.resetH();
+    }
+
+    return result;
+}
+
+[[nodiscard]] inline u16 add16Signed8(u16 lhs, u8 rhs, CPU& cpu) {
+    return add16Signed(lhs, u16(rhs), cpu);
+}
+
+inline void decimalAdjust(u8& operand, CPU& cpu) {
+    (void)operand;
+    (void)cpu;
+    // TODO
+}
+
+inline void complement(u8& operand, CPU& cpu) {
+    const u8 result = ~operand;
+    // Z not affected
+    cpu.flags.setN();
+    cpu.flags.setH();
+    // C not affected
+
+    operand = result;
+}
+
+inline void rlc(u8& operand, CPU& cpu) {
+    const bool bit7 = bitwise::test<7>(operand);
+
+    operand <<= 1;
+    operand |= bit7;
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit7 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+inline void rl(u8& operand, CPU& cpu) {
+    const bool bit7 = bitwise::test<7>(operand);
+    const bool oldCarry = cpu.flags.getC();
+
+    operand <<= 1;
+    operand |= oldCarry;
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit7 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+inline void rrc(u8& operand, CPU& cpu) {
+    const bool bit0 = bitwise::test<0>(operand);
+
+    operand >>= 1;
+    operand |= bit0 << 7;
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+inline void rr(u8& operand, CPU& cpu) {
+    const bool bit0 = bitwise::test<0>(operand);
+    const bool oldCarry = cpu.flags.getC();
+
+    operand >>= 1;
+    operand |= oldCarry << 7;
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+inline void sla(u8& operand, CPU& cpu) {
+    const bool bit7 = bitwise::test<7>(operand);
+    operand <<= 1;
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit7 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+inline void sra(u8& operand, CPU& cpu) {
+    const bool bit7 = bitwise::test<7>(operand);
+    const bool bit0 = bitwise::test<0>(operand);
+    operand >>= 1;
+    operand |= bit7;
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+inline void srl(u8& operand, CPU& cpu) {
+    const bool bit0 = bitwise::test<0>(operand);
+    operand >>= 1;
+    bitwise::reset<7>(operand);
+
+    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+}
+
+template <unsigned Bit>
+inline void bit(u8 operand, CPU& cpu) {
+    bitwise::test<Bit>(operand) ? cpu.flags.resetZ() : cpu.flags.setZ();
+    cpu.flags.resetN();
+    cpu.flags.setH();
+    // C not affected
+}
+template <unsigned Bit>
+inline void set(u8& operand, CPU& cpu) {
+    (void)cpu;
+    bitwise::set<Bit>(operand);
+}
+template <unsigned Bit>
+inline void res(u8& operand, CPU& cpu) {
+    (void)cpu;
+    bitwise::reset<Bit>(operand);
 }
 
 }  // namespace alu
