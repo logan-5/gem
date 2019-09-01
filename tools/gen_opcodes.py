@@ -19,10 +19,11 @@ _GEN_SKELETON = """\
 # include <cassert>
 # include <iostream>
 # include <iomanip>
-# define UNIMPLEMENTED_OPCODE(WHICH)                                  \\
+# define UNIMPLEMENTED_OPCODE(WHICH)                                 \\
     do {{                                                            \\
         std::cerr << "unimplemented opcode: 0x" << std::setfill('0') \\
                     << std::setw(2) << std::hex << int(WHICH)        \\
+                    << " at PC 0x" << std::hex << cpu.reg.PC         \\
                     << '\\n';                                        \\
         GEM_UNREACHABLE();                                           \\
     }}                                                               \\
@@ -32,7 +33,17 @@ _GEN_SKELETON = """\
 # endif
 
 namespace {{
+{helper_functions}
 {defs}
+
+#if GEM_DEBUG_LOGGING
+std::ostream& operator<<(std::ostream& ostr, const gem::op::Opcode opcode) {{
+    using namespace gem;
+    ostr << "\\"" << opcode.name << "\\" (0x" << std::hex << int(opcode.val) << ")";
+    return ostr;
+}}
+#endif
+
 }}
 
 gem::Opcode gem::op::getOpcode(const gem::u8 code, gem::CPU& cpu) {{
@@ -42,6 +53,7 @@ gem::Opcode gem::op::getOpcode(const gem::u8 code, gem::CPU& cpu) {{
     UNIMPLEMENTED_OPCODE(code);
 }}
 void gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
+    GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::hex << cpu.reg.PC);
     switch (opcode) {{
         {runners}
     }}
@@ -64,7 +76,8 @@ def sanitize_name(op_name):
 def make_defs(ops):
     def make_def(op):
         def make_inc_pc(op):
-            return '' if op.is_jump else 'cpu.reg.PC += {};'.format(op.op_count + 1)
+            # I thought we were going to treat jumps specially, but we're not
+            return 'cpu.reg.PC += {};'.format(op.op_count + 1)
         return """constexpr gem::op::Opcode {sname}{{{val}, {op_count}, {ticks}, "{name}"}};
 inline void run_{sname}(gem::CPU& cpu) {{
     (void)cpu;
@@ -146,7 +159,9 @@ def main():
     ops_module = imp.load_source('opcode', sys.argv[1])
     ops = sorted(list(ops_module.opcodes), key=lambda op: int(op.val, base=0))
     out = _GEN_SKELETON.format(defs=make_defs(
-        ops), getters=make_getters(ops, ops_module.two_byte_prefixes), runners=make_runners(ops, ops_module.two_byte_prefixes))
+        ops), getters=make_getters(ops, ops_module.two_byte_prefixes),
+        runners=make_runners(ops, ops_module.two_byte_prefixes),
+        helper_functions='\n'.join(ops_module.helper_functions))
     with safe_open_w(sys.argv[2]) as f:
         f.write(out)
     print "done"

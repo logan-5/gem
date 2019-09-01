@@ -4,6 +4,8 @@ opcodes = set()
 
 two_byte_prefixes = set()
 
+helper_functions = []
+
 
 class Opcode(object):
     def __init__(self, name, val, op_count, ticks, implementation, is_jump, second_byte=None):
@@ -57,6 +59,7 @@ Opcode('LD A, (DE)', '0x1A', 0, 8,
 Opcode('LD A, (nn)', '0xFA', 2, 8, """u16 addr;
     std::memcpy(&addr, cpu.current(), 2);
     cpu.reg.A = cpu.bus.read(addr);""", False)
+Opcode('LD A, n', '0x3E', 1, 8, 'cpu.reg.A = cpu.current()[1];', False)
 
 Opcode('LD (BC), A', '0x02', 0, 8,
        'cpu.bus.write(cpu.reg.getBC(), cpu.reg.A);', False)
@@ -180,11 +183,24 @@ Opcode('LD (nn), SP', '0x08', 1, 20, """u16 addr;
     std::memcpy(&addr, cpu.current() + 1, 2);
     cpu.bus.write(addr, cpu.reg.getSP());""", False)
 
+helper_functions.append("""\
+void pushStack(gem::u16 val, gem::CPU& cpu) {
+    cpu.reg.SP -= 2;
+    cpu.bus.write(cpu.reg.SP, val);
+}""")
+helper_functions.append("""\
+gem::u16 popStack(gem::CPU& cpu) {
+    using namespace gem;
+    const u8* const ptr = cpu.bus.ptr(cpu.reg.SP);
+    u16 val;
+    std::memcpy(&val, ptr, 2);
+    cpu.reg.SP += 2;
+    return val;
+}""")
+
 
 def PUSH_nn(r, code):
-    return Opcode('PUSH {}'.format(r), code, 0, 16, """cpu.bus.write(cpu.reg.SP, cpu.reg.get{}());
-    cpu.reg.SP -= 2;
-    """.format(r), False)
+    return Opcode('PUSH {}'.format(r), code, 0, 16, 'pushStack(cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 PUSH_nn('AF', '0xF5')
@@ -194,12 +210,7 @@ PUSH_nn('HL', '0xE5')
 
 
 def POP_nn(r, code):
-    return Opcode('POP {}'.format(r), code, 0, 12, """const u8* const ptr = cpu.bus.ptr(cpu.reg.SP + 2);
-    u16 val;
-    std::memcpy(&val, ptr, 2);
-    cpu.reg.set{}(val);
-    cpu.reg.SP += 2;
-    """.format(r), False)
+    return Opcode('POP {}'.format(r), code, 0, 12, 'cpu.reg.set{}(popStack(cpu));'.format(r), False)
 
 
 POP_nn('AF', '0xF1')
@@ -625,6 +636,112 @@ for b in xrange(0, 8):
 # JUMPS ############################################################################################
 ####################################################################################################
 
+helper_functions.append("""\
+void JP_nn_impl(gem::CPU& cpu) {
+    using namespace gem;
+    u16 addr;
+    std::memcpy(&addr, cpu.current()+1, 2);
+    cpu.reg.PC = addr;
+}""")
+Opcode('JP nn', '0xC3', 2, 12, 'JP_nn_impl(cpu);', True)
+
+
+def JP_cc(cc, code, flag, reset):
+    return Opcode('JP {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
+        JP_nn_impl(cpu);
+        cpu.ticks += 4;
+    }}""".format(flag, '!' if reset else ''), True)
+
+
+JP_cc('NZ', '0xC2', 'Z', True)
+JP_cc('Z', '0xCA', 'Z', False)
+JP_cc('NC', '0xD2', 'C', True)
+JP_cc('C', '0xDA', 'C', False)
+
+Opcode('JP (HL)', '0xE9', 0, 4, 'cpu.reg.PC = cpu.bus.read(cpu.reg.getHL());', True)
+
+helper_functions.append("""\
+void JR_n_impl(gem::CPU& cpu) {
+    using namespace gem;
+    i8 val;
+    std::memcpy(&val, cpu.current()+1, 1);
+    cpu.reg.PC += val;
+}""")
+Opcode('JR n', '0x18', 1, 12, 'JR_n_impl(cpu);', True)
+
+
+def JR_cc_n(cc, code, flag, reset):
+    return Opcode('JR {}, n'.format(cc), code, 1, 8, """if ({1}cpu.flags.get{0}()) {{
+        JR_n_impl(cpu);
+        cpu.ticks += 4;
+    }}""".format(flag, '!' if reset else ''), True)
+
+
+JR_cc_n('NZ', '0x20', 'Z', True)
+JR_cc_n('Z', '0x28', 'Z', False)
+JR_cc_n('NC', '0x30', 'C', True)
+JR_cc_n('C', '0x38', 'C', False)
+
+helper_functions.append("""\
+void call_impl(gem::CPU& cpu) {
+    using namespace gem;
+    const u16 nextInstruction = cpu.reg.PC + 3;
+    pushStack(nextInstruction, cpu);
+    u16 jump;
+    std::memcpy(&jump, cpu.current() + 1, 2);
+    cpu.reg.PC = jump;
+}""")
+
+Opcode('CALL nn', '0xCD', 2, 24, 'call_impl(cpu);', True)
+
+
+def CALL_cc_nn(cc, code, flag, reset):
+    return Opcode('CALL {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
+        call_impl(cpu);
+        cpu.ticks += 12;
+    }}""".format(flag, '!' if reset else ''), True)
+
+
+CALL_cc_nn('NZ', '0xC4', 'Z', True)
+CALL_cc_nn('Z', '0xCC', 'Z', False)
+CALL_cc_nn('NC', '0xD4', 'C', True)
+CALL_cc_nn('C', '0xDC', 'C', False)
+
+####################################################################################################
+# RESTARTS #########################################################################################
+####################################################################################################
+
+for n in (0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38):
+    code = hex(n + 0xC7)
+    Opcode('RST {}'.format(hex(n)), code, 0, 32, """pushStack(cpu.reg.PC, cpu);
+    cpu.reg.PC = 0x00 + {};
+    """.format(hex(n)), True)
+
+####################################################################################################
+# RETURNS ##########################################################################################
+####################################################################################################
+
+helper_functions.append("""\
+void ret_impl(gem::CPU& cpu) {
+    using namespace gem;
+    const u16 next = popStack(cpu);
+    cpu.reg.PC = next;   
+}""")
+
+Opcode('RET', '0xC9', 0, 8, 'ret_impl(cpu);', False)
+
+
+def RET_cc(cc, code, flag, reset):
+    return Opcode('RET {}'.format(cc), code, 0, 8, """if ({1}cpu.flags.get{0}()) {{
+        ret_impl(cpu);
+        cpu.ticks += 12;
+    }}""".format(flag, '!' if reset else ''), True)
+
+
+RET_cc('NZ', '0xC0', 'Z', True)
+RET_cc('Z', '0xC8', 'Z', False)
+RET_cc('NC', '0xD0', 'C', True)
+RET_cc('C', '0xD8', 'C', False)
 
 # tools for adding new opcodes
 

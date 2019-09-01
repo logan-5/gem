@@ -3,8 +3,6 @@
 
 #include <cstdint>
 
-namespace gem {
-
 #ifndef NDEBUG
 #define GEM_ENABLE_ASSERTS true
 #endif
@@ -23,6 +21,24 @@ namespace gem {
 // TODO platform detection
 #define GEM_UNREACHABLE() __builtin_unreachable()
 #endif
+
+#ifndef NDEBUG
+#define GEM_DEBUG_LOGGING true
+#endif
+
+#if GEM_DEBUG_LOGGING
+#include <iostream>
+#define GEM_DEBUG_LOG(...)                \
+    do {                                  \
+        std::cerr << __VA_ARGS__ << '\n'; \
+    } while (false)
+#else
+#define GEM_DEBUG_LOG(...) \
+    do {                   \
+    } while (false)
+#endif
+
+namespace gem {
 
 using u8 = unsigned char;
 using u16 = std::uint16_t;
