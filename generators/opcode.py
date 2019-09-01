@@ -421,7 +421,7 @@ two_byte_prefixes.add('0xCB')
 
 
 def SWAP(n, code):
-    return Opcode('SWAP {}'.format(n), '0xCB', 1, 8, 'alu::swapNybbles(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('SWAP {}'.format(n), '0xCB', 0, 8, 'alu::swapNybbles(cpu.reg.{}, cpu);'.format(n), False, code)
 
 
 SWAP('A', '0x37')
@@ -431,7 +431,7 @@ SWAP('D', '0x32')
 SWAP('E', '0x33')
 SWAP('H', '0x34')
 SWAP('L', '0x35')
-Opcode('SWAP (HL)', '0xCB', 1, 8, """u8 temp = cpu.bus.read(cpu.reg.getHL());
+Opcode('SWAP (HL)', '0xCB', 0, 8, """u8 temp = cpu.bus.read(cpu.reg.getHL());
         alu::swapNybbles(temp, cpu);
         cpu.bus.write(cpu.reg.getHL(), temp);""", False, '0x36')
 
@@ -574,7 +574,7 @@ Opcode('SRL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 def BIT(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
-        Opcode('BIT {1}, {0}'.format(n, b), '0xCB', 1, 8,
+        Opcode('BIT {1}, {0}'.format(n, b), '0xCB', 0, 8,
                'alu::bit<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
 
 
@@ -587,14 +587,14 @@ BIT('H', '0x44')
 BIT('L', '0x45')
 for b in xrange(0, 8):
     code_i = int('0x46', base=0) + b * 8
-    Opcode('BIT {}, (HL)'.format(b), '0xCB', 1, 16,
+    Opcode('BIT {}, (HL)'.format(b), '0xCB', 0, 16,
            'alu::bit<{}>(cpu.bus.read(cpu.reg.getHL()), cpu);'.format(b), False, hex(code_i))
 
 
 def SET(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
-        Opcode('SET {1}, {0}'.format(n, b), '0xCB', 1, 8,
+        Opcode('SET {1}, {0}'.format(n, b), '0xCB', 0, 8,
                'alu::set<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
 
 
@@ -607,7 +607,7 @@ SET('H', '0xC4')
 SET('L', '0xC5')
 for b in xrange(0, 8):
     code_i = int('0xC6', base=0) + b * 8
-    Opcode('SET {}, (HL)'.format(b), '0xCB', 1, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    Opcode('SET {}, (HL)'.format(b), '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
         alu::set<{}>(tmp, cpu);
         cpu.bus.write(cpu.reg.getHL(), tmp);""".format(b), False, hex(code_i))
 
@@ -615,7 +615,7 @@ for b in xrange(0, 8):
 def RES(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
-    Opcode('RES {1}, {0}'.format(n, b), '0xCB', 1, 8,
+    Opcode('RES {1}, {0}'.format(n, b), '0xCB', 0, 8,
            'alu::res<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
 
 
@@ -628,7 +628,7 @@ RES('H', '0x84')
 RES('L', '0x85')
 for b in xrange(0, 8):
     code_i = int('0x86', base=0) + b * 8
-    Opcode('RES {}, (HL)'.format(b), '0xCB', 1, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
+    Opcode('RES {}, (HL)'.format(b), '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
         alu::res<{}>(tmp, cpu);
         cpu.bus.write(cpu.reg.getHL(), tmp);""".format(b), False, hex(code_i))
 

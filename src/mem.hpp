@@ -12,6 +12,7 @@ struct Mem {
 
     u8 read(u16 address) const;
     void write(u16 address, u8 value);
+    void write(u16 address, u16 value);
 
     const u8* ptr(u16 address) const {
         GEM_ASSERT(address < mem.size());
@@ -19,6 +20,10 @@ struct Mem {
     }
 
    private:
+    u8* mut_ptr(u16 address) {
+        GEM_ASSERT(address < mem.size());
+        return mem.data() + address;
+    }
     std::vector<u8> mem;
 };
 

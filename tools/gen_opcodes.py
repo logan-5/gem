@@ -77,7 +77,7 @@ def make_defs(ops):
     def make_def(op):
         def make_inc_pc(op):
             # I thought we were going to treat jumps specially, but we're not
-            return 'cpu.reg.PC += {};'.format(op.op_count + 1)
+            return 'cpu.reg.PC += {};'.format(op.op_count + 1 + (1 if op.second_byte is not None else 0))
         return """constexpr gem::op::Opcode {sname}{{{val}, {op_count}, {ticks}, "{name}"}};
 inline void run_{sname}(gem::CPU& cpu) {{
     (void)cpu;
