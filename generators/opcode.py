@@ -2,15 +2,18 @@
 
 opcodes = set()
 
+two_byte_prefixes = set()
+
 
 class Opcode(object):
-    def __init__(self, name, val, op_count, ticks, implementation, is_jump):
+    def __init__(self, name, val, op_count, ticks, implementation, is_jump, second_byte=None):
         self.name = name
         self.val = val
         self.op_count = op_count
         self.ticks = ticks
         self.implementation = implementation
         self.is_jump = is_jump
+        self.second_byte = second_byte
 
         opcodes.add(self)
 
@@ -318,6 +321,28 @@ XOR('H', '0xAC')
 XOR('L', '0xAD')
 Opcode('XOR (HL)', '0xAE', 0, 8,
        'alu::xor_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+
+####################################################################################################
+# MISCELLANEOUS ####################################################################################
+####################################################################################################
+
+two_byte_prefixes.add('0xCB')
+
+
+def SWAP(n, code):
+    return Opcode('SWAP {}'.format(n), '0xCB', 1, 8, 'alu::swapNybbles(cpu.reg.{}, cpu);'.format(n), False, code)
+
+
+SWAP('A', '0x37')
+SWAP('B', '0x30')
+SWAP('C', '0x31')
+SWAP('D', '0x32')
+SWAP('E', '0x33')
+SWAP('H', '0x34')
+SWAP('L', '0x35')
+Opcode('SWAP (HL)', '0xCB', 1, 8, """u8 temp = cpu.bus.read(cpu.reg.getHL());
+        alu::swapNybbles(temp, cpu);
+        cpu.bus.write(cpu.reg.getHL(), temp);""", False, '0x36')
 
 # tools for adding new opcodes
 

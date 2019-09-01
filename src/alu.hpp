@@ -89,6 +89,19 @@ inline void xor_(u8& lhs, u8 rhs, CPU& cpu) {
     lhs = u8(result);
 }
 
+inline void swapNybbles(u8& n, CPU& cpu) {
+    const u8 upper = n & 0b1111'0000;
+    const u8 lower = n & 0b0000'1111;
+    const u8 result = (upper >> 4) | (lower << 4);
+
+    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    cpu.flags.resetN();
+    cpu.flags.resetH();
+    cpu.flags.resetC();
+
+    n = result;
+}
+
 }  // namespace alu
 }  // namespace gem
 
