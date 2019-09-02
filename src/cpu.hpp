@@ -24,7 +24,7 @@ struct Registers {
         std::memcpy(&SECOND, p + 1, sizeof SECOND);                         \
     }                                                                       \
     void inc##FIRST##SECOND() {                                             \
-        set##FIRST##SECOND(get##FIRST##SECOND() - 1);                       \
+        set##FIRST##SECOND(get##FIRST##SECOND() + 1);                       \
     }                                                                       \
     void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
     REGISTER_PAIR(A, F)
