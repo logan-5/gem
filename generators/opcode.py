@@ -131,6 +131,18 @@ def LDaddrHL_r2(r2, code):
     return Opcode('LD (HL), {}'.format(r2), code, 0, 8, 'cpu.bus.write(cpu.reg.getHL(), cpu.reg.{});'.format(r2), False)
 
 
+def LDn_A(n, code):
+    return Opcode('LD {}, A'.format(n), code, 0, 4, 'cpu.reg.{} = cpu.reg.A;'.format(n), False)
+
+
+LDn_A('B', '0x47')
+LDn_A('C', '0x4F')
+LDn_A('D', '0x57')
+LDn_A('E', '0x5F')
+LDn_A('H', '0x67')
+LDn_A('L', '0x6F')
+
+
 LDaddrHL_r2('B', '0x70')
 LDaddrHL_r2('C', '0x71')
 LDaddrHL_r2('D', '0x72')
@@ -341,6 +353,8 @@ CP('H', '0xBC')
 CP('L', '0xBD')
 Opcode('CP (HL)', '0xBE', 0, 8,
        'alu::cp(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('CP n', '0xFE', 1, 8,
+       'alu::cp(cpu.reg.A, cpu.current()[1], cpu);', False)
 
 
 def INC(r, code):
@@ -685,11 +699,11 @@ JR_cc_n('C', '0x38', 'C', False)
 helper_functions.append("""\
 void call_impl(gem::CPU& cpu) {
     using namespace gem;
-    const u16 nextInstruction = cpu.reg.PC + 3;
+    const u16 nextInstruction = cpu.reg.PC + 2;
     pushStack(nextInstruction, cpu);
     u16 jump;
     std::memcpy(&jump, cpu.current() + 1, 2);
-    cpu.reg.PC = jump;
+    cpu.reg.PC = jump - 3; // ?????????
 }""")
 
 Opcode('CALL nn', '0xCD', 2, 24, 'call_impl(cpu);', True)
