@@ -91,9 +91,11 @@ struct FlagRegister {
 };
 
 struct CPU {
+    explicit CPU(Mem& in_bus) : bus{in_bus} {}
+
     Registers reg;
     FlagRegister flags;
-    Mem bus;
+    Mem& bus;
     unsigned long long ticks = 0;
 
     void execute() { op::runOpcode(readPC(), *this); }

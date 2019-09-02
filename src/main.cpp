@@ -1,7 +1,9 @@
 #include "cpu.hpp"
+#include "mem.hpp"
 
 int main() {
-    gem::CPU cpu;
+    gem::Mem mem;
+    gem::CPU cpu{mem};
     while (true) {
         cpu.execute();
     }
