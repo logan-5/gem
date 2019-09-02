@@ -1,0 +1,12 @@
+#ifndef GEM_CONFIG_HPP
+#define GEM_CONFIG_HPP
+
+namespace gem {
+namespace fs {
+inline constexpr const char* projectPath() {
+    return "@PROJECT_PATH@";
+}
+}  // namespace fs
+}  // namespace gem
+
+#endif

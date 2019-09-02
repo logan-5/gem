@@ -8,7 +8,7 @@
 namespace gem {
 
 struct Mem {
-    explicit Mem();
+    explicit Mem(std::vector<u8> rom);
 
     u8 read(u16 address) const;
     void write(u16 address, u8 value);
@@ -25,6 +25,7 @@ struct Mem {
         return mem.data() + address;
     }
     std::vector<u8> mem;
+    std::vector<u8> romFirst256;
 };
 
 }  // namespace gem
