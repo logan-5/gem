@@ -11,21 +11,21 @@
 namespace gem {
 
 struct Registers {
-#define REGISTER_PAIR(FIRST, SECOND)                               \
-    u8 FIRST, SECOND;                                              \
-    u16 get##FIRST##SECOND() const {                               \
-        u16 ret;                                                   \
-        std::memcpy(&ret, reinterpret_cast<const u8*>(&FIRST), 2); \
-        return ret;                                                \
-    }                                                              \
-    void set##FIRST##SECOND(const u16 fs) {                        \
-        const u8* const p = reinterpret_cast<const u8*>(&fs);      \
-        std::memcpy(&FIRST, p + 0, 1);                             \
-        std::memcpy(&SECOND, p + 1, 1);                            \
-    }                                                              \
-    void inc##FIRST##SECOND() {                                    \
-        set##FIRST##SECOND(get##FIRST##SECOND() - 1);              \
-    }                                                              \
+#define REGISTER_PAIR(FIRST, SECOND)                                        \
+    u8 FIRST, SECOND;                                                       \
+    u16 get##FIRST##SECOND() const {                                        \
+        u16 ret;                                                            \
+        std::memcpy(&ret, reinterpret_cast<const u8*>(&FIRST), sizeof ret); \
+        return ret;                                                         \
+    }                                                                       \
+    void set##FIRST##SECOND(const u16 fs) {                                 \
+        const u8* const p = reinterpret_cast<const u8*>(&fs);               \
+        std::memcpy(&FIRST, p + 0, sizeof FIRST);                           \
+        std::memcpy(&SECOND, p + 1, sizeof SECOND);                         \
+    }                                                                       \
+    void inc##FIRST##SECOND() {                                             \
+        set##FIRST##SECOND(get##FIRST##SECOND() - 1);                       \
+    }                                                                       \
     void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
     REGISTER_PAIR(A, F)
     REGISTER_PAIR(B, C)
@@ -96,8 +96,15 @@ struct CPU {
     Mem bus;
     unsigned long long ticks = 0;
 
-    void execute() { op::runOpcode(*current(), *this); }
-    const u8* current() const { return bus.ptr(reg.PC); }
+    void execute() { op::runOpcode(readPC(), *this); }
+    u8 readPC() { return *bus.ptr(reg.PC++); }
+    u16 readPC16() {
+        u16 ret;
+        std::memcpy(&ret, bus.ptr(reg.PC), sizeof ret);
+        reg.PC += 2;
+        return ret;
+    }
+    u8 peekPC() const { return *bus.ptr(reg.PC); }
 };
 
 }  // namespace gem

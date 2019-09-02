@@ -29,7 +29,7 @@ Opcode('NOP', '0x00', 0, 4, '', False)
 
 
 def LDnn_n(nn, code):
-    return Opcode('LD {}, n'.format(nn), code, 1, 8, 'cpu.reg.{} = cpu.current()[1];'.format(nn), False)
+    return Opcode('LD {}, n'.format(nn), code, 1, 8, 'cpu.reg.{} = cpu.readPC();'.format(nn), False)
 
 
 LDnn_n('B', '0x06')
@@ -56,10 +56,9 @@ Opcode('LD A, (BC)', '0x0A', 0, 8,
        'cpu.reg.A = cpu.bus.read(cpu.reg.getBC());', False)
 Opcode('LD A, (DE)', '0x1A', 0, 8,
        'cpu.reg.A = cpu.bus.read(cpu.reg.getDE());', False)
-Opcode('LD A, (nn)', '0xFA', 2, 8, """u16 addr;
-    std::memcpy(&addr, cpu.current(), 2);
-    cpu.reg.A = cpu.bus.read(addr);""", False)
-Opcode('LD A, n', '0x3E', 1, 8, 'cpu.reg.A = cpu.current()[1];', False)
+Opcode('LD A, (nn)', '0xFA', 2, 8,
+       'cpu.reg.A = cpu.bus.read(cpu.readPC16());', False)
+Opcode('LD A, n', '0x3E', 1, 8, 'cpu.reg.A = cpu.readPC();', False)
 
 Opcode('LD (BC), A', '0x02', 0, 8,
        'cpu.bus.write(cpu.reg.getBC(), cpu.reg.A);', False)
@@ -67,9 +66,8 @@ Opcode('LD (DE), A', '0x12', 0, 8,
        'cpu.bus.write(cpu.reg.getDE(), cpu.reg.A);', False)
 Opcode('LD (HL), A', '0x77', 0, 8,
        'cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);', False)
-Opcode('LD (nn), A', '0xEA', 2, 16, """u16 addr;
-    std::memcpy(&addr, cpu.current(), 2);
-    cpu.bus.write(addr, cpu.reg.A);""", False)
+Opcode('LD (nn), A', '0xEA', 2, 16,
+       'cpu.bus.write(cpu.readPC16(), cpu.reg.A);', False)
 
 LDr1_r2('B', 'B', '0x40')
 LDr1_r2('B', 'C', '0x41')
@@ -150,7 +148,7 @@ LDaddrHL_r2('E', '0x73')
 LDaddrHL_r2('H', '0x74')
 LDaddrHL_r2('L', '0x75')
 Opcode('LD (HL), n', '0x36', 1, 12,
-       'cpu.bus.write(cpu.reg.getHL(), cpu.current()[1]);', False)
+       'cpu.bus.write(cpu.reg.getHL(), cpu.readPC());', False)
 
 
 Opcode('LD A, (C)', '0xF2', 0, 8,
@@ -167,9 +165,9 @@ Opcode('LDI A, (HL)', '0x2A', 0, 8, """cpu.reg.A = cpu.bus.read(cpu.reg.getHL())
 Opcode('LDI (HL), A', '0x22', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);
     cpu.reg.incHL();""", False)
 Opcode('LDH (n), A', '0xE0', 1, 8,
-       'cpu.bus.write(0xFF00 + cpu.current()[1], cpu.reg.A);', False)
+       'cpu.bus.write(0xFF00 + cpu.readPC(), cpu.reg.A);', False)
 Opcode('LDH A, (n)', '0xF0', 1, 8,
-       'cpu.reg.A = cpu.bus.read(0xFF00 + cpu.current()[1]);', False)
+       'cpu.reg.A = cpu.bus.read(0xFF00 + cpu.readPC());', False)
 
 ####################################################################################################
 # 16-BIT LOADS #####################################################################################
@@ -177,9 +175,7 @@ Opcode('LDH A, (n)', '0xF0', 1, 8,
 
 
 def LDn_nn_16(r, code):
-    return Opcode('LD {}, nn'.format(r), code, 2, 12, """u16 val;
-    std::memcpy(&val, cpu.current() + 1, 2);
-    cpu.reg.set{}(val);""".format(r), False)
+    return Opcode('LD {}, nn'.format(r), code, 2, 12, 'cpu.reg.set{}(cpu.readPC16());'.format(r), False)
 
 
 LDn_nn_16('BC', '0x01')
@@ -188,12 +184,11 @@ LDn_nn_16('HL', '0x21')
 LDn_nn_16('SP', '0x31')
 
 Opcode('LD SP, HL', '0xF9', 0, 8, 'cpu.reg.setSP(cpu.reg.getHL());', False)
-Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.reg.SP, cpu.current()[0], cpu);
+Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.reg.SP, cpu.readPC(), cpu);
     cpu.reg.setHL(cpu.bus.read(addr));""", False)
 
-Opcode('LD (nn), SP', '0x08', 1, 20, """u16 addr;
-    std::memcpy(&addr, cpu.current() + 1, 2);
-    cpu.bus.write(addr, cpu.reg.getSP());""", False)
+Opcode('LD (nn), SP', '0x08', 1, 20,
+       'cpu.bus.write(cpu.readPC16(), cpu.reg.getSP());', False)
 
 helper_functions.append("""\
 void pushStack(gem::u16 val, gem::CPU& cpu) {
@@ -205,7 +200,7 @@ gem::u16 popStack(gem::CPU& cpu) {
     using namespace gem;
     const u8* const ptr = cpu.bus.ptr(cpu.reg.SP);
     u16 val;
-    std::memcpy(&val, ptr, 2);
+    std::memcpy(&val, ptr, sizeof val);
     cpu.reg.SP += 2;
     return val;
 }""")
@@ -354,7 +349,7 @@ CP('L', '0xBD')
 Opcode('CP (HL)', '0xBE', 0, 8,
        'alu::cp(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('CP n', '0xFE', 1, 8,
-       'alu::cp(cpu.reg.A, cpu.current()[1], cpu);', False)
+       'alu::cp(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def INC(r, code):
@@ -402,9 +397,8 @@ ADD_HL('DE', '0x19')
 ADD_HL('HL', '0x29')
 ADD_HL('SP', '0x39')
 
-Opcode('ADD SP, n', '0xE8', 2, 16, """u16 tmp;
-        std::memcpy(&tmp, cpu.current(), 2);
-        cpu.reg.SP = alu::add16Signed(cpu.reg.SP, tmp, cpu);""", False)
+Opcode('ADD SP, n', '0xE8', 2, 16,
+       'cpu.reg.SP = alu::add16Signed8(cpu.reg.SP, cpu.readPC(), cpu);', False)
 
 
 def INC_NN(nn, code):
@@ -652,10 +646,7 @@ for b in xrange(0, 8):
 
 helper_functions.append("""\
 void JP_nn_impl(gem::CPU& cpu) {
-    using namespace gem;
-    u16 addr;
-    std::memcpy(&addr, cpu.current()+1, 2);
-    cpu.reg.PC = addr;
+    cpu.reg.PC = cpu.readPC16();
 }""")
 Opcode('JP nn', '0xC3', 2, 12, 'JP_nn_impl(cpu);', True)
 
@@ -664,7 +655,7 @@ def JP_cc(cc, code, flag, reset):
     return Opcode('JP {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
         JP_nn_impl(cpu);
         cpu.ticks += 4;
-    }}""".format(flag, '!' if reset else ''), True)
+    }} else {{ (void)cpu.readPC16(); }}""".format(flag, '!' if reset else ''), True)
 
 
 JP_cc('NZ', '0xC2', 'Z', True)
@@ -677,10 +668,12 @@ Opcode('JP (HL)', '0xE9', 0, 4, 'cpu.reg.PC = cpu.bus.read(cpu.reg.getHL());', T
 helper_functions.append("""\
 void JR_n_impl(gem::CPU& cpu) {
     using namespace gem;
+    const u8 byte = cpu.readPC();
     i8 val;
-    std::memcpy(&val, cpu.current()+1, 1);
+    std::memcpy(&val, &byte, sizeof val);
     cpu.reg.PC += val;
 }""")
+
 Opcode('JR n', '0x18', 1, 12, 'JR_n_impl(cpu);', True)
 
 
@@ -688,7 +681,7 @@ def JR_cc_n(cc, code, flag, reset):
     return Opcode('JR {}, n'.format(cc), code, 1, 8, """if ({1}cpu.flags.get{0}()) {{
         JR_n_impl(cpu);
         cpu.ticks += 4;
-    }}""".format(flag, '!' if reset else ''), True)
+    }} else {{ (void)cpu.readPC(); }}""".format(flag, '!' if reset else ''), True)
 
 
 JR_cc_n('NZ', '0x20', 'Z', True)
@@ -699,11 +692,9 @@ JR_cc_n('C', '0x38', 'C', False)
 helper_functions.append("""\
 void call_impl(gem::CPU& cpu) {
     using namespace gem;
-    const u16 nextInstruction = cpu.reg.PC + 2;
-    pushStack(nextInstruction, cpu);
-    u16 jump;
-    std::memcpy(&jump, cpu.current() + 1, 2);
-    cpu.reg.PC = jump - 3; // ?????????
+    const u16 target = cpu.readPC16();
+    pushStack(cpu.reg.PC, cpu);
+    cpu.reg.PC = target;
 }""")
 
 Opcode('CALL nn', '0xCD', 2, 24, 'call_impl(cpu);', True)

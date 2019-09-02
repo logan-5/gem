@@ -17,7 +17,7 @@ struct Opcode {
 };
 
 // these implementations are generated
-Opcode getOpcode(u8 code, CPU& cpu);
+Opcode getOpcode(u8 code, const CPU& cpu);
 void runOpcode(u8 opcode, CPU& cpu);
 inline void runOpcode(Opcode opcode, CPU& cpu) {
     runOpcode(opcode.val, cpu);

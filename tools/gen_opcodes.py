@@ -46,14 +46,14 @@ std::ostream& operator<<(std::ostream& ostr, const gem::op::Opcode opcode) {{
 
 }}
 
-gem::Opcode gem::op::getOpcode(const gem::u8 code, gem::CPU& cpu) {{
+gem::Opcode gem::op::getOpcode(const gem::u8 code, const gem::CPU& cpu) {{
     switch (code) {{
         {getters}
     }}
     UNIMPLEMENTED_OPCODE(code);
 }}
 void gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
-    GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::hex << cpu.reg.PC);
+    GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::hex << (cpu.reg.PC-1));
     switch (opcode) {{
         {runners}
     }}
@@ -75,19 +75,16 @@ def sanitize_name(op_name):
 
 def make_defs(ops):
     def make_def(op):
-        def make_inc_pc(op):
-            # I thought we were going to treat jumps specially, but we're not
-            return 'cpu.reg.PC += {};'.format(op.op_count + 1 + (1 if op.second_byte is not None else 0))
         return """constexpr gem::op::Opcode {sname}{{{val}, {op_count}, {ticks}, "{name}"}};
 inline void run_{sname}(gem::CPU& cpu) {{
     (void)cpu;
     using namespace gem;
     {impl}
     cpu.ticks += {ticks};
-    {inc_pc}
 }}""" \
-            .format(sname=sanitize_name(op.name), name=op.name, val=op.val, op_count=op.op_count,
-                    ticks=op.ticks, impl=op.implementation, inc_pc=make_inc_pc(op))
+            .format(sname=sanitize_name(op.name), name=op.name,
+                    val=op.val, op_count=op.op_count,
+                    ticks=op.ticks, impl=op.implementation)
     return '\n'.join(make_def(op) for op in ops)
 
 
@@ -112,10 +109,11 @@ def make_getters(ops, two_byte_prefixes):
 
     def make_two_byte_getter(item):
         switch_skeleton = """case {prefix}: {{
-            switch (cpu.current()[1]) {{
+            const u8 secondByte = cpu.peekPC(); // do NOT increment PC
+            switch (secondByte) {{
                 {cases}
             }}
-            UNIMPLEMENTED_OPCODE(({prefix} << 8) | cpu.current()[1]);
+            UNIMPLEMENTED_OPCODE(({prefix} << 8) | secondByte);
         }}"""
         cases = ['case {val}: {{ return ::{name}; }}'.format(val=op.second_byte, name=sanitize_name(op.name)) for op in sorted(
             item[1], key=lambda op: int(op.second_byte, base=0))]
@@ -136,10 +134,11 @@ def make_runners(ops, two_byte_prefixes):
 
     def make_two_byte_runner(item):
         switch_skeleton = """case {prefix}: {{
-            switch (cpu.current()[1]) {{
+            const u8 secondByte = cpu.readPC();
+            switch (secondByte) {{
                 {cases}
             }}
-            UNIMPLEMENTED_OPCODE(({prefix} << 8) | cpu.current()[1]);
+            UNIMPLEMENTED_OPCODE(({prefix} << 8) | secondByte);
         }}"""
         cases = ['case {val}: {{ ::run_{name}(cpu); return; }}'.format(val=op.second_byte, name=sanitize_name(op.name)) for op in sorted(
             item[1], key=lambda op: int(op.second_byte, base=0))]

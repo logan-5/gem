@@ -5,7 +5,7 @@ project(gem)
 find_package(PythonInterp 2.7 REQUIRED)
 
 # TODO platform independent yada yada
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Weffc++ -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Weffc++ -Werror -Wconversion")
 
 option(ASAN "ASAN" OFF)
 if (ASAN)
