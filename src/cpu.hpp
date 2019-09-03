@@ -12,23 +12,18 @@
 namespace gem {
 
 struct Registers {
-    // assumes little-endian
-#define REGISTER_PAIR(FIRST, SECOND)                          \
-    u8 FIRST, SECOND;                                         \
-    u16 get##FIRST##SECOND() const {                          \
-        u16 ret;                                              \
-        const std::array<u8, 2> swapped{{SECOND, FIRST}};     \
-        std::memcpy(&ret, swapped.data(), sizeof ret);        \
-        return ret;                                           \
-    }                                                         \
-    void set##FIRST##SECOND(const u16 fs) {                   \
-        const u8* const p = reinterpret_cast<const u8*>(&fs); \
-        std::memcpy(&FIRST, p + 1, sizeof FIRST);             \
-        std::memcpy(&SECOND, p + 0, sizeof SECOND);           \
-    }                                                         \
-    void inc##FIRST##SECOND() {                               \
-        set##FIRST##SECOND(get##FIRST##SECOND() + 1);         \
-    }                                                         \
+#define REGISTER_PAIR(FIRST, SECOND)                  \
+    u8 FIRST, SECOND;                                 \
+    u16 get##FIRST##SECOND() const {                  \
+        return u16(u16(FIRST) << 8u) | u16(SECOND);   \
+    }                                                 \
+    void set##FIRST##SECOND(const u16 fs) {           \
+        FIRST = u8(fs >> 8u);                         \
+        SECOND = u8(fs & 0xFF);                       \
+    }                                                 \
+    void inc##FIRST##SECOND() {                       \
+        set##FIRST##SECOND(get##FIRST##SECOND() + 1); \
+    }                                                 \
     void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
     REGISTER_PAIR(A, F)
     REGISTER_PAIR(B, C)
