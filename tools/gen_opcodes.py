@@ -32,6 +32,8 @@ _GEN_SKELETON = """\
 # define UNIMPLEMENTED_OPCODE(...) GEM_UNREACHABLE()
 # endif
 
+{globals_}
+
 namespace {{
 {helper_functions}
 {defs}
@@ -160,7 +162,8 @@ def main():
     out = _GEN_SKELETON.format(defs=make_defs(
         ops), getters=make_getters(ops, ops_module.two_byte_prefixes),
         runners=make_runners(ops, ops_module.two_byte_prefixes),
-        helper_functions='\n'.join(ops_module.helper_functions))
+        helper_functions='\n'.join(ops_module.helper_functions),
+        globals_='\n'.join(ops_module.globals_))
     with safe_open_w(sys.argv[2]) as f:
         f.write(out)
     print "done"

@@ -6,26 +6,29 @@
 #include "mem.hpp"
 #include "opcode.hpp"
 
+#include <array>
 #include <cstring>
 
 namespace gem {
 
 struct Registers {
-#define REGISTER_PAIR(FIRST, SECOND)                                        \
-    u8 FIRST, SECOND;                                                       \
-    u16 get##FIRST##SECOND() const {                                        \
-        u16 ret;                                                            \
-        std::memcpy(&ret, reinterpret_cast<const u8*>(&FIRST), sizeof ret); \
-        return ret;                                                         \
-    }                                                                       \
-    void set##FIRST##SECOND(const u16 fs) {                                 \
-        const u8* const p = reinterpret_cast<const u8*>(&fs);               \
-        std::memcpy(&FIRST, p + 0, sizeof FIRST);                           \
-        std::memcpy(&SECOND, p + 1, sizeof SECOND);                         \
-    }                                                                       \
-    void inc##FIRST##SECOND() {                                             \
-        set##FIRST##SECOND(get##FIRST##SECOND() + 1);                       \
-    }                                                                       \
+    // assumes little-endian
+#define REGISTER_PAIR(FIRST, SECOND)                          \
+    u8 FIRST, SECOND;                                         \
+    u16 get##FIRST##SECOND() const {                          \
+        u16 ret;                                              \
+        const std::array<u8, 2> swapped{{SECOND, FIRST}};     \
+        std::memcpy(&ret, swapped.data(), sizeof ret);        \
+        return ret;                                           \
+    }                                                         \
+    void set##FIRST##SECOND(const u16 fs) {                   \
+        const u8* const p = reinterpret_cast<const u8*>(&fs); \
+        std::memcpy(&FIRST, p + 1, sizeof FIRST);             \
+        std::memcpy(&SECOND, p + 0, sizeof SECOND);           \
+    }                                                         \
+    void inc##FIRST##SECOND() {                               \
+        set##FIRST##SECOND(get##FIRST##SECOND() + 1);         \
+    }                                                         \
     void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
     REGISTER_PAIR(A, F)
     REGISTER_PAIR(B, C)

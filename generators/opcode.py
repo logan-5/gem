@@ -4,6 +4,7 @@ opcodes = set()
 
 two_byte_prefixes = set()
 
+globals_ = []
 helper_functions = []
 
 
@@ -190,20 +191,47 @@ Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.re
 Opcode('LD (nn), SP', '0x08', 1, 20,
        'cpu.bus.write(cpu.readPC16(), cpu.reg.getSP());', False)
 
+globals_.append("""\
+#ifndef NDEBUG
+#define GEM_DEBUG_STACK true
+#endif
+
+#if GEM_DEBUG_STACK
+#include <stack>
+static std::stack<gem::u16> debugStack;
+#endif""")
 helper_functions.append("""\
+#if GEM_DEBUG_STACK
+#define GEM_DEBUG_PUSH_STACK(...) do { ::debugStack.push(__VA_ARGS__); } while (false)
+#else
+#define GEM_DEBUG_PUSH_STACK(...) do {} while (false)
+#endif
 void pushStack(gem::u16 val, gem::CPU& cpu) {
     cpu.reg.SP -= 2;
     cpu.bus.write(cpu.reg.SP, val);
-}""")
+    GEM_DEBUG_PUSH_STACK(val);
+}
+#undef GEM_DEBUG_PUSH_STACK""")
 helper_functions.append("""\
+#if GEM_DEBUG_STACK
+#define GEM_DEBUG_POP_STACK(...) do { \\
+    GEM_ASSERT(!::debugStack.empty()); \\
+    GEM_ASSERT((__VA_ARGS__) == ::debugStack.top() && "stack corruption!"); \\
+    ::debugStack.pop(); } while (false)
+#else
+#define GEM_DEBUG_POP_STACK(...) do {} while (false)
+#endif
 gem::u16 popStack(gem::CPU& cpu) {
     using namespace gem;
     const u8* const ptr = cpu.bus.ptr(cpu.reg.SP);
     u16 val;
     std::memcpy(&val, ptr, sizeof val);
     cpu.reg.SP += 2;
+
+    GEM_DEBUG_POP_STACK(val);
     return val;
-}""")
+}
+#undef GEM_DEBUG_POP_STACK""")
 
 
 def PUSH_nn(r, code):

@@ -142,7 +142,7 @@ inline void dec(u8& operand, CPU& cpu) {
 
     result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.setN();
-    halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
+    halfCarry ? cpu.flags.resetH() : cpu.flags.setH();
     // C not affected
 
     operand = result;
@@ -217,7 +217,7 @@ inline void rlc(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
 
     operand <<= 1u;
-    operand |= bit7 ? 1 : 0;
+    bit7 ? bitwise::set<0>(operand) : bitwise::reset<0>(operand);
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
@@ -230,7 +230,7 @@ inline void rl(u8& operand, CPU& cpu) {
     const bool oldCarry = cpu.flags.getC();
 
     operand <<= 1u;
-    operand |= oldCarry ? 1u : 0u;
+    oldCarry ? bitwise::set<0>(operand) : bitwise::reset<0>(operand);
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
@@ -242,7 +242,7 @@ inline void rrc(u8& operand, CPU& cpu) {
     const bool bit0 = bitwise::test<0>(operand);
 
     operand >>= 1u;
-    operand |= bit0 << 7u;
+    bit0 ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
@@ -255,7 +255,7 @@ inline void rr(u8& operand, CPU& cpu) {
     const bool oldCarry = cpu.flags.getC();
 
     operand >>= 1u;
-    operand |= oldCarry << 7u;
+    oldCarry ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
@@ -277,7 +277,7 @@ inline void sra(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
     const bool bit0 = bitwise::test<0>(operand);
     operand >>= 1u;
-    operand |= bit7 ? 1u : 0u;
+    bit7 ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
     operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
