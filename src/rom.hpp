@@ -3,12 +3,13 @@
 
 #include "fs.hpp"
 #include "fwd.hpp"
+#include "mem.hpp"
 
 #include <vector>
 
 namespace gem {
 namespace ROM {
-std::optional<std::vector<u8>> load(const fs::AbsolutePath& path);
+std::optional<Mem::Block> load(const fs::AbsolutePath& path);
 }
 }  // namespace gem
 

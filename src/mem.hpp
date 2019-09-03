@@ -7,25 +7,39 @@
 
 namespace gem {
 
+struct GPU;
+
 struct Mem {
-    explicit Mem(std::vector<u8> rom);
+    using Block = std::vector<u8>;
+
+    explicit Mem(Block rom, GPU& gpu);
 
     u8 read(u16 address) const;
     void write(u16 address, u8 value);
     void write(u16 address, u16 value);
 
-    const u8* ptr(u16 address) const {
-        GEM_ASSERT(address < mem.size());
-        return mem.data() + address;
+    const u8* ptr(u16 address) const;
+
+    template <std::size_t Start, std::size_t EndInclusive>
+    static Block makeBlock(Block block = {}) {
+        static_assert(Start <= EndInclusive);
+        if (block.size() < EndInclusive - Start + 1) {
+            block.resize(EndInclusive - Start + 1, 0x00);
+        }
+        return block;
     }
 
    private:
-    u8* mut_ptr(u16 address) {
-        GEM_ASSERT(address < mem.size());
-        return mem.data() + address;
-    }
-    std::vector<u8> mem;
-    std::vector<u8> romFirst256;
+    template <bool>
+    friend struct GetPtr;
+    u8* mut_ptr(u16 address);
+
+    Block ROM;
+    Block bootstrap;
+    GPU& gpu;
+    Block externalRam;
+    Block workingRam;
+    Block zeroPage;
 };
 
 }  // namespace gem

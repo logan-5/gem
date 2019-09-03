@@ -1,5 +1,6 @@
 #include "cpu.hpp"
 #include "fs.hpp"
+#include "gpu.hpp"
 #include "mem.hpp"
 #include "rom.hpp"
 
@@ -17,7 +18,8 @@ int main(int argc, const char* argv[]) {
         std::exit(1);
     }
 
-    gem::Mem mem{*std::move(rom)};
+    gem::GPU gpu;
+    gem::Mem mem{*std::move(rom), gpu};
     gem::CPU cpu{mem};
     while (true) {
         cpu.execute();

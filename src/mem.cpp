@@ -2,40 +2,135 @@
 
 #include "bootstrap.hpp"
 
-#include <algorithm>
+#include "gpu.hpp"
+
+#include <array>
+
+namespace {
+constexpr std::array<gem::u8, 2> zeroData{0x00, 0x00};
+std::array<gem::u8, 2> garbage{0x00, 0x00};
+}  // namespace
 
 namespace gem {
 
-namespace {
-
-std::vector<u8> makeMem(std::vector<u8> rom) {
-    rom.resize(std::numeric_limits<u16>::max(), 0x00);
-    return rom;
-}
-
-std::vector<u8> first256(const std::vector<u8>& ofVec) {
-    GEM_ASSERT(ofVec.size() >= 256);
-    return std::vector<u8>(ofVec.begin(), ofVec.begin() + 256);
-}
-}  // namespace
-
-Mem::Mem(std::vector<u8> rom)
-    : mem(makeMem(std::move(rom))), romFirst256(first256(mem)) {
-    auto bootstrap = ::gem::loadBootstrapROM();
-    GEM_ASSERT(bootstrap.size() == romFirst256.size());
-    std::copy(bootstrap.begin(), bootstrap.end(), mem.begin());
-}
+Mem::Mem(Block rom, GPU& gpu)
+    : ROM(makeBlock<0x00, 0x3FFF>(std::move(rom)))
+    , bootstrap(::gem::loadBootstrapROM())
+    , gpu{gpu}
+    , externalRam(makeBlock<0xA000, 0xBFFF>())
+    , workingRam(makeBlock<0xC000, 0xDFFF>())
+    , zeroPage(makeBlock<0xFF80, 0xFFFF>()) {}
 
 u8 Mem::read(u16 address) const {
-    GEM_ASSERT(address < mem.size());
-    return this->mem[address];
+    return *ptr(address);
 }
 void Mem::write(u16 address, u8 value) {
-    GEM_ASSERT(address < mem.size());
-    this->mem[address] = value;
+    *mut_ptr(address) = value;
 }
 void Mem::write(const u16 address, const u16 value) {
     std::memcpy(mut_ptr(address), &value, 2);
+}
+
+template <bool Write>
+struct GetPtr {
+    std::conditional_t<Write, u8*, const u8*> operator()(
+          std::conditional_t<Write, Mem&, const Mem&> mem,
+          const u16 address) const {
+        switch (address & 0xF000) {
+            case 0x0000: {
+                if (!mem.bootstrap.empty() && address <= 0xFF) {
+                    return mem.bootstrap.data() + address;
+                }
+                [[fallthrough]];
+            }
+            case 0x3000:
+            case 0x2000:
+            case 0x1000:
+                return mem.ROM.data() + address;
+
+            case 0x4000:
+            case 0x5000:
+            case 0x6000:
+            case 0x7000:
+                return mem.ROM.data() + address;
+
+            case 0x8000:
+            case 0x9000:
+                return mem.gpu.vram.data() + (address - 0x8000);
+
+            case 0xA000:
+            case 0xB000:
+                return mem.externalRam.data() + (address - 0xA000);
+
+            case 0xC000:
+            case 0xD000:
+                return mem.workingRam.data() + (address - 0xC000);
+
+            // shadow working RAM
+            case 0xE000:
+                return mem.workingRam.data() + (address - 0xE000);
+
+            case 0xF000: {
+                switch (address & 0x0F00) {
+                    // shadow working RAM
+                    case 0x0100:
+                    case 0x0200:
+                    case 0x0300:
+                    case 0x0400:
+                    case 0x0500:
+                    case 0x0600:
+                    case 0x0700:
+                    case 0x0800:
+                    case 0x0A00:
+                    case 0x0B00:
+                    case 0x0C00:
+                    case 0x0D00:
+                        return mem.workingRam.data() + (address - 0xE000);
+
+                    case 0x0E00:
+                        if (address <= 0xFE9F) {
+                            return mem.gpu.spriteData.data() +
+                                   (address - 0xFE00);
+                        }
+                        if constexpr (Write) {
+                            return ::garbage.data();
+                        } else {
+                            return ::zeroData.data();
+                        }
+
+                    case 0x0F00:
+                        switch (address & 0x00F0) {
+                            case 0x80:
+                            case 0x90:
+                            case 0xA0:
+                            case 0xB0:
+                            case 0xC0:
+                            case 0xD0:
+                            case 0xE0:
+                            case 0xF0:
+                                return mem.zeroPage.data() + (address - 0xFF80);
+
+                            default:
+                                if constexpr (Write) {
+                                    return ::garbage.data();
+                                } else {
+                                    // not implemented yet
+                                    return ::zeroData.data();
+                                }
+                        }
+                }
+            }
+        }
+        GEM_UNREACHABLE();
+    }
+};
+
+const u8* Mem::ptr(u16 address) const {
+    return GetPtr<false>{}(*this, address);
+}
+
+u8* Mem::mut_ptr(u16 address) {
+    return GetPtr<true>{}(*this, address);
 }
 
 }  // namespace gem
