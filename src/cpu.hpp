@@ -94,9 +94,11 @@ struct CPU {
     Registers reg;
     FlagRegister flags;
     Mem& bus;
-    unsigned long long ticks = 0;
 
-    void execute() { op::runOpcode(readPC(), *this); }
+    void execute() {
+        deltaTicks = op::runOpcode(readPC(), *this);
+        ticks += deltaTicks;
+    }
     u8 readPC() { return *bus.ptr(reg.PC++); }
     u16 readPC16() {
         u16 ret;
@@ -105,6 +107,13 @@ struct CPU {
         return ret;
     }
     u8 peekPC() const { return *bus.ptr(reg.PC); }
+
+    Ticks getTicks() const { return ticks; }
+    DeltaTicks getDeltaTicks() const { return deltaTicks; }
+
+   private:
+    Ticks ticks = 0;
+    DeltaTicks deltaTicks = 0;
 };
 
 }  // namespace gem

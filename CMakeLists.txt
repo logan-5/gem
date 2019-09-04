@@ -36,7 +36,6 @@ add_custom_command(
     OUTPUT ${OPCODE_SRC}
     DEPENDS ${TOOLS_DIR}/gen_opcodes.py ${GENERATORS_DIR}/opcode.py
     COMMAND ${PYTHON_EXECUTABLE} ${TOOLS_DIR}/gen_opcodes.py ${GENERATORS_DIR}/opcode.py ${OPCODE_SRC})
-set_source_files_properties(${OPCODE_SRC} PROPERTIES OBJECT_DEPENDS ${GENERATED_DIR}/opcodes.cache)
 set(SRC ${SRC} ${OPCODE_SRC})
 
 set(BOOTSTRAP_SRC ${GENERATED_DIR}/bootstrap.cpp)
@@ -44,7 +43,6 @@ add_custom_command(
     OUTPUT ${BOOTSTRAP_SRC}
     DEPENDS ${TOOLS_DIR}/gen_bootstrap.py ${GENERATORS_DIR}/DMG_ROM.bin
     COMMAND ${PYTHON_EXECUTABLE} ${TOOLS_DIR}/gen_bootstrap.py ${GENERATORS_DIR}/DMG_ROM.bin ${BOOTSTRAP_SRC})
-set_source_files_properties(${BOOTSTRAP_SRC} PROPERTIES OBJECT_DEPENDS ${GENERATED_DIR}/bootstrap.cache)
 set(SRC ${SRC} ${BOOTSTRAP_SRC})
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)

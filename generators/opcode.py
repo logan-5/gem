@@ -682,7 +682,7 @@ Opcode('JP nn', '0xC3', 2, 12, 'JP_nn_impl(cpu);', True)
 def JP_cc(cc, code, flag, reset):
     return Opcode('JP {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
         JP_nn_impl(cpu);
-        cpu.ticks += 4;
+        ticks += 4;
     }} else {{ (void)cpu.readPC16(); }}""".format(flag, '!' if reset else ''), True)
 
 
@@ -708,7 +708,7 @@ Opcode('JR n', '0x18', 1, 12, 'JR_n_impl(cpu);', True)
 def JR_cc_n(cc, code, flag, reset):
     return Opcode('JR {}, n'.format(cc), code, 1, 8, """if ({1}cpu.flags.get{0}()) {{
         JR_n_impl(cpu);
-        cpu.ticks += 4;
+        ticks += 4;
     }} else {{ (void)cpu.readPC(); }}""".format(flag, '!' if reset else ''), True)
 
 
@@ -731,7 +731,7 @@ Opcode('CALL nn', '0xCD', 2, 24, 'call_impl(cpu);', True)
 def CALL_cc_nn(cc, code, flag, reset):
     return Opcode('CALL {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
         call_impl(cpu);
-        cpu.ticks += 12;
+        ticks += 12;
     }}""".format(flag, '!' if reset else ''), True)
 
 
@@ -767,7 +767,7 @@ Opcode('RET', '0xC9', 0, 8, 'ret_impl(cpu);', False)
 def RET_cc(cc, code, flag, reset):
     return Opcode('RET {}'.format(cc), code, 0, 8, """if ({1}cpu.flags.get{0}()) {{
         ret_impl(cpu);
-        cpu.ticks += 12;
+        ticks += 12;
     }}""".format(flag, '!' if reset else ''), True)
 
 

@@ -54,7 +54,7 @@ gem::Opcode gem::op::getOpcode(const gem::u8 code, const gem::CPU& cpu) {{
     }}
     UNIMPLEMENTED_OPCODE(code);
 }}
-void gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
+gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
     GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::hex << (cpu.reg.PC-1));
     switch (opcode) {{
         {runners}
@@ -78,11 +78,13 @@ def sanitize_name(op_name):
 def make_defs(ops):
     def make_def(op):
         return """constexpr gem::op::Opcode {sname}{{{val}, {op_count}, {ticks}, "{name}"}};
-inline void run_{sname}(gem::CPU& cpu) {{
+inline gem::DeltaTicks run_{sname}(gem::CPU& cpu) {{
     (void)cpu;
     using namespace gem;
+    DeltaTicks ticks = 0;
     {impl}
-    cpu.ticks += {ticks};
+    ticks += {ticks};
+    return ticks;
 }}""" \
             .format(sname=sanitize_name(op.name), name=op.name,
                     val=op.val, op_count=op.op_count,
@@ -130,7 +132,7 @@ def make_runners(ops, two_byte_prefixes):
     one_byte_ops, two_byte_ops = partition_two_byte_ops(ops, two_byte_prefixes)
 
     def make_one_byte_runner(op):
-        return 'case {val}: {{ ::run_{name}(cpu); return; }}'.format(val=op.val, name=sanitize_name(op.name))
+        return 'case {val}: {{ return ::run_{name}(cpu); }}'.format(val=op.val, name=sanitize_name(op.name))
     one_byte_runners = '\n\t\t'.join(
         make_one_byte_runner(op) for op in one_byte_ops)
 
@@ -142,7 +144,7 @@ def make_runners(ops, two_byte_prefixes):
             }}
             UNIMPLEMENTED_OPCODE(({prefix} << 8) | secondByte);
         }}"""
-        cases = ['case {val}: {{ ::run_{name}(cpu); return; }}'.format(val=op.second_byte, name=sanitize_name(op.name)) for op in sorted(
+        cases = ['case {val}: {{ return ::run_{name}(cpu); }}'.format(val=op.second_byte, name=sanitize_name(op.name)) for op in sorted(
             item[1], key=lambda op: int(op.second_byte, base=0))]
         return switch_skeleton.format(prefix=item[0], cases='\n\t\t\t\t'.join(cases))
     two_byte_runners = '\n\t\t'.join(make_two_byte_runner(item)

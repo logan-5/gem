@@ -23,5 +23,6 @@ int main(int argc, const char* argv[]) {
     gem::CPU cpu{mem};
     while (true) {
         cpu.execute();
+        gpu.step(cpu.getDeltaTicks());
     }
 }

@@ -49,6 +49,9 @@ using i8 = signed char;
 using i16 = std::int16_t;
 using i32 = std::int32_t;
 
+using Ticks = unsigned long long;
+using DeltaTicks = unsigned long long;
+
 }  // namespace gem
 
 #endif
