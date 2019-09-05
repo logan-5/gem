@@ -271,6 +271,8 @@ ADD('H', '0x84')
 ADD('L', '0x85')
 Opcode('ADD A, (HL)', '0x86', 0, 8,
        'alu::add8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('ADD A, n', '0xC6', 1, 8,
+       'alu::add8(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def ADC(r, code):
@@ -286,6 +288,8 @@ ADC('H', '0x8C')
 ADC('L', '0x8D')
 Opcode('ADC A, (HL)', '0x8E', 0, 8,
        'alu::adc8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('ADC A, n', '0xCE', 1, 8,
+       'alu::adc8(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def SUB(r, code):
@@ -301,6 +305,8 @@ SUB('H', '0x94')
 SUB('L', '0x95')
 Opcode('SUB A, (HL)', '0x96', 0, 8,
        'alu::sub8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('SUB A, n', '0xD6', 1, 8,
+       'alu::sub8(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def SBC(r, code):
@@ -331,6 +337,8 @@ AND('H', '0xA4')
 AND('L', '0xA5')
 Opcode('AND (HL)', '0xA6', 0, 8,
        'alu::and_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('AND n', '0xE6', 0, 8,
+       'alu::and_(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def OR(r, code):
@@ -346,6 +354,8 @@ OR('H', '0xB4')
 OR('L', '0xB5')
 Opcode('OR (HL)', '0xB6', 0, 8,
        'alu::or_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('OR n', '0xF6', 0, 8,
+       'alu::or_(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def XOR(r, code):
@@ -361,6 +371,8 @@ XOR('H', '0xAC')
 XOR('L', '0xAD')
 Opcode('XOR (HL)', '0xAE', 0, 8,
        'alu::xor_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('XOR n', '0xEE', 0, 8,
+       'alu::xor_(cpu.reg.A, cpu.readPC(), cpu);', False)
 
 
 def CP(r, code):
@@ -521,6 +533,9 @@ RL_n('L', '0x15')
 Opcode('RL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
     alu::rl(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x16')
+
+Opcode('RRCA', '0x0F', 0, 4, 'alu::rr(cpu.reg.A, cpu);', False)
+Opcode('RRA', '0x1F', 0, 4, 'alu::rr(cpu.reg.A, cpu);', False)
 
 
 def RRC_n(n, code):
@@ -775,6 +790,13 @@ RET_cc('NZ', '0xC0', 'Z', True)
 RET_cc('Z', '0xC8', 'Z', False)
 RET_cc('NC', '0xD0', 'C', True)
 RET_cc('C', '0xD8', 'C', False)
+
+####################################################################################################
+# INTERRUPTS #######################################################################################
+####################################################################################################
+
+Opcode('DI', '0xF3', 0, 4, '// TODO', False)
+Opcode('EI', '0xFB', 0, 4, '// TODO', False)
 
 # tools for adding new opcodes
 

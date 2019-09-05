@@ -5,7 +5,7 @@ project(gem)
 find_package(PythonInterp 2.7 REQUIRED)
 
 # TODO platform independent yada yada
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Weffc++ -Werror -Wconversion -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Weffc++ -Wconversion -g")
 
 option(ASAN "ASAN" OFF)
 if (ASAN)
@@ -64,6 +64,8 @@ SET_SRC_HPP_CPP(gpu)
 SET_SRC_HPP_CPP(mem)
 SET_SRC_HPP_CPP(opcode)
 SET_SRC_HPP_CPP(rom)
+
+SET_SRC_HPP(fwd)
 
 SET_SRC_FILE(main)
 
