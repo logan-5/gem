@@ -49,6 +49,8 @@ inline void sub8_impl(u8& lhs, u16 rhs, CPU& cpu) {
     cpu.flags.setN();
     carry ? cpu.flags.resetC() : cpu.flags.setC();
     halfC ? cpu.flags.resetH() : cpu.flags.setH();
+
+    lhs = u8(diff);
 }
 }  // namespace detail
 
@@ -60,33 +62,33 @@ inline void sbc8(u8& lhs, u8 rhs, CPU& cpu) {
 }
 
 inline void and_(u8& lhs, u8 rhs, CPU& cpu) {
-    const bool result = bool(lhs) && bool(rhs);
-    result ? cpu.flags.resetZ() : cpu.flags.setZ();
+    const u8 result = lhs & rhs;
+    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
     cpu.flags.setH();
     cpu.flags.resetC();
 
-    lhs = u8(result);
+    lhs = result;
 }
 
 inline void or_(u8& lhs, u8 rhs, CPU& cpu) {
-    const bool result = bool(lhs) || bool(rhs);
-    result ? cpu.flags.resetZ() : cpu.flags.setZ();
+    const u8 result = lhs | rhs;
+    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
     cpu.flags.resetH();
     cpu.flags.resetC();
 
-    lhs = u8(result);
+    lhs = result;
 }
 
 inline void xor_(u8& lhs, u8 rhs, CPU& cpu) {
-    const bool result = bool(lhs) ^ bool(rhs);
-    result ? cpu.flags.resetZ() : cpu.flags.setZ();
+    const u8 result = lhs ^ rhs;
+    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
     cpu.flags.resetH();
     cpu.flags.resetC();
 
-    lhs = u8(result);
+    lhs = result;
 }
 
 inline void swapNybbles(u8& n, CPU& cpu) {
