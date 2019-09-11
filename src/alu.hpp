@@ -19,7 +19,7 @@ inline void add8_impl(u8& lhs, u16 rhs, CPU& cpu) {
     const bool carry = carryResult & 0b1'0000'0000;
     const bool halfC = carryResult & 0b0'0001'0000;
 
-    sum == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    (sum & 0xff) == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.resetN();
     carry ? cpu.flags.setC() : cpu.flags.resetC();
     halfC ? cpu.flags.setH() : cpu.flags.resetH();
@@ -45,10 +45,10 @@ inline void sub8_impl(u8& lhs, u16 rhs, CPU& cpu) {
     const bool carry = carryResult & (1 << 15);
     const bool halfC = carryResult & 0b0001'0000;
 
-    diff == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    (diff & 0xff) == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.setN();
-    carry ? cpu.flags.resetC() : cpu.flags.setC();
-    halfC ? cpu.flags.resetH() : cpu.flags.setH();
+    carry ? cpu.flags.setC() : cpu.flags.resetC();
+    halfC ? cpu.flags.setH() : cpu.flags.resetH();
 
     lhs = u8(diff);
 }
@@ -112,12 +112,12 @@ inline void cp(u8 lhs, u8 rhs, CPU& cpu) {
     } else {
         cpu.flags.resetZ();
 
-        lhs < rhs ? cpu.flags.resetC() : cpu.flags.setC();
+        lhs < rhs ? cpu.flags.setC() : cpu.flags.resetC();
         const u8 noBorrow = lhs ^ rhs;
         const u8 diff = lhs - rhs;
         const u8 borrowResult = noBorrow ^ diff;
         const auto halfCarry = borrowResult & 0b0001'0000;
-        halfCarry ? cpu.flags.resetH() : cpu.flags.setH();
+        halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
     }
     cpu.flags.setN();
 }
@@ -144,7 +144,7 @@ inline void dec(u8& operand, CPU& cpu) {
 
     result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
     cpu.flags.setN();
-    halfCarry ? cpu.flags.resetH() : cpu.flags.setH();
+    halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
     // C not affected
 
     operand = result;
@@ -215,18 +215,24 @@ inline void complement(u8& operand, CPU& cpu) {
     operand = result;
 }
 
+template <bool SetZ>
 inline void rlc(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
 
     operand <<= 1u;
     bit7 ? bitwise::set<0>(operand) : bitwise::reset<0>(operand);
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    if constexpr (SetZ) {
+        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    } else {
+        cpu.flags.resetZ();
+    }
     cpu.flags.resetN();
     cpu.flags.resetH();
     bit7 ? cpu.flags.setC() : cpu.flags.resetC();
 }
 
+template <bool SetZ>
 inline void rl(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
     const bool oldCarry = cpu.flags.getC();
@@ -234,24 +240,34 @@ inline void rl(u8& operand, CPU& cpu) {
     operand <<= 1u;
     oldCarry ? bitwise::set<0>(operand) : bitwise::reset<0>(operand);
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    if constexpr (SetZ) {
+        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    } else {
+        cpu.flags.resetZ();
+    }
     cpu.flags.resetN();
     cpu.flags.resetH();
     bit7 ? cpu.flags.setC() : cpu.flags.resetC();
 }
 
+template <bool SetZ>
 inline void rrc(u8& operand, CPU& cpu) {
     const bool bit0 = bitwise::test<0>(operand);
 
     operand >>= 1u;
     bit0 ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    if constexpr (SetZ) {
+        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    } else {
+        cpu.flags.resetZ();
+    }
     cpu.flags.resetN();
     cpu.flags.resetH();
     bit0 ? cpu.flags.setC() : cpu.flags.resetC();
 }
 
+template <bool SetZ>
 inline void rr(u8& operand, CPU& cpu) {
     const bool bit0 = bitwise::test<0>(operand);
     const bool oldCarry = cpu.flags.getC();
@@ -259,7 +275,11 @@ inline void rr(u8& operand, CPU& cpu) {
     operand >>= 1u;
     oldCarry ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    if constexpr (SetZ) {
+        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+    } else {
+        cpu.flags.resetZ();
+    }
     cpu.flags.resetN();
     cpu.flags.resetH();
     bit0 ? cpu.flags.setC() : cpu.flags.resetC();

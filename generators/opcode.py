@@ -186,7 +186,7 @@ LDn_nn_16('SP', '0x31')
 
 Opcode('LD SP, HL', '0xF9', 0, 8, 'cpu.reg.setSP(cpu.reg.getHL());', False)
 Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.reg.SP, cpu.readPC(), cpu);
-    cpu.reg.setHL(cpu.bus.read(addr));""", False)
+    cpu.reg.setHL(addr);""", False)  # ???????
 
 Opcode('LD (nn), SP', '0x08', 1, 20,
        'cpu.bus.write(cpu.readPC16(), cpu.reg.getSP());', False)
@@ -499,12 +499,12 @@ Opcode('SCF', '0x37', 0, 4, """cpu.flags.resetN();
 # ROTATES & SHIFTS #################################################################################
 ####################################################################################################
 
-Opcode('RLCA', '0x07', 0, 4, 'alu::rlc(cpu.reg.A, cpu);', False)
-Opcode('RLA', '0x17', 0, 4, 'alu::rl(cpu.reg.A, cpu);', False)
+Opcode('RLCA', '0x07', 0, 4, 'alu::rlc<false>(cpu.reg.A, cpu);', False)
+Opcode('RLA', '0x17', 0, 4, 'alu::rl<false>(cpu.reg.A, cpu);', False)
 
 
 def RLC_n(n, code):
-    return Opcode('RLC {}'.format(n), '0xCB', 0, 8, 'alu::rlc(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RLC {}'.format(n), '0xCB', 0, 8, 'alu::rlc<true>(cpu.reg.{}, cpu);'.format(n), False, code)
 
 
 RLC_n('A', '0x07')
@@ -515,12 +515,12 @@ RLC_n('E', '0x03')
 RLC_n('H', '0x04')
 RLC_n('L', '0x05')
 Opcode('RLC (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
-    alu::rlc(tmp, cpu);
+    alu::rlc<true>(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x06')
 
 
 def RL_n(n, code):
-    return Opcode('RL {}'.format(n), '0xCB', 0, 8, 'alu::rl(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RL {}'.format(n), '0xCB', 0, 8, 'alu::rl<true>(cpu.reg.{}, cpu);'.format(n), False, code)
 
 
 RL_n('A', '0x17')
@@ -531,15 +531,15 @@ RL_n('E', '0x13')
 RL_n('H', '0x14')
 RL_n('L', '0x15')
 Opcode('RL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
-    alu::rl(tmp, cpu);
+    alu::rl<true>(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x16')
 
-Opcode('RRCA', '0x0F', 0, 4, 'alu::rr(cpu.reg.A, cpu);', False)
-Opcode('RRA', '0x1F', 0, 4, 'alu::rr(cpu.reg.A, cpu);', False)
+Opcode('RRCA', '0x0F', 0, 4, 'alu::rr<false>(cpu.reg.A, cpu);', False)
+Opcode('RRA', '0x1F', 0, 4, 'alu::rr<false>(cpu.reg.A, cpu);', False)
 
 
 def RRC_n(n, code):
-    return Opcode('RRC {}'.format(n), '0xCB', 0, 8, 'alu::rrc(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RRC {}'.format(n), '0xCB', 0, 8, 'alu::rrc<true>(cpu.reg.{}, cpu);'.format(n), False, code)
 
 
 RRC_n('A', '0x0F')
@@ -550,12 +550,12 @@ RRC_n('E', '0x0B')
 RRC_n('H', '0x0C')
 RRC_n('L', '0x0D')
 Opcode('RRC (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
-    alu::rrc(tmp, cpu);
+    alu::rrc<true>(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x0E')
 
 
 def RR_n(n, code):
-    return Opcode('RR {}'.format(n), '0xCB', 0, 8, 'alu::rr(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RR {}'.format(n), '0xCB', 0, 8, 'alu::rr<true>(cpu.reg.{}, cpu);'.format(n), False, code)
 
 
 RR_n('A', '0x1F')
@@ -566,7 +566,7 @@ RR_n('E', '0x1B')
 RR_n('H', '0x1C')
 RR_n('L', '0x1D')
 Opcode('RR (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
-    alu::rr(tmp, cpu);
+    alu::rr<true>(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x1E')
 
 

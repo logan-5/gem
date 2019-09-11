@@ -30,8 +30,8 @@ struct Registers {
     REGISTER_PAIR(D, E)
     REGISTER_PAIR(H, L)
 
-    u16 SP;
-    u16 PC = 0;
+    u16 SP = 0xFFFE;
+    u16 PC = 0x100;
 
     // for symmetry with the 16-bit registers as macro'd out above
     u16 getSP() const { return SP; }
@@ -101,8 +101,8 @@ struct CPU {
     }
     u8 readPC() { return *bus.ptr(reg.PC++); }
     u16 readPC16() {
-        u16 ret;
-        std::memcpy(&ret, bus.ptr(reg.PC), sizeof ret);
+        const u8* const ptr = bus.ptr(reg.PC);
+        const u16 ret = u16(ptr[0]) | u16(ptr[1] << 8u);
         reg.PC += 2;
         return ret;
     }
