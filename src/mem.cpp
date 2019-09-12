@@ -56,7 +56,11 @@ struct GetPtr {
 
             case 0x8000:
             case 0x9000:
-                return mem.gpu.vram.data() + (address - 0x8000);
+                if constexpr (Write) {
+                    return mem.gpu.writableVramPtr(address - 0x8000);
+                } else {
+                    return mem.gpu.vramPtr(address - 0x8000);
+                }
 
             case 0xA000:
             case 0xB000:
@@ -109,6 +113,12 @@ struct GetPtr {
                             case 0xE0:
                             case 0xF0:
                                 return mem.zeroPage.data() + (address - 0xFF80);
+
+                            case 0x40:
+                            case 0x50:
+                            case 0x60:
+                            case 0x70:
+                                return mem.gpu.registerPtr(address);
 
                             default:
                                 if constexpr (Write) {
