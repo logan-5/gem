@@ -19,10 +19,10 @@ inline void add8_impl(u8& lhs, u16 rhs, CPU& cpu) {
     const bool carry = carryResult & 0b1'0000'0000;
     const bool halfC = carryResult & 0b0'0001'0000;
 
-    (sum & 0xff) == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    carry ? cpu.flags.setC() : cpu.flags.resetC();
-    halfC ? cpu.flags.setH() : cpu.flags.resetH();
+    (sum & 0xff) == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
+    halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
 
     lhs = u8(sum);
 }
@@ -33,7 +33,7 @@ inline void add8(u8& lhs, u8 rhs, CPU& cpu) {
 }
 
 inline void adc8(u8& lhs, u8 rhs, CPU& cpu) {
-    detail::add8_impl(lhs, u16(rhs) + cpu.flags.getC(), cpu);
+    detail::add8_impl(lhs, u16(rhs) + cpu.reg.flags.getC(), cpu);
 }
 
 namespace detail {
@@ -45,10 +45,10 @@ inline void sub8_impl(u8& lhs, u16 rhs, CPU& cpu) {
     const bool carry = carryResult & (1 << 15);
     const bool halfC = carryResult & 0b0001'0000;
 
-    (diff & 0xff) == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.setN();
-    carry ? cpu.flags.setC() : cpu.flags.resetC();
-    halfC ? cpu.flags.setH() : cpu.flags.resetH();
+    (diff & 0xff) == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.setN();
+    carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
+    halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
 
     lhs = u8(diff);
 }
@@ -58,35 +58,35 @@ inline void sub8(u8& lhs, u8 rhs, CPU& cpu) {
     detail::sub8_impl(lhs, rhs, cpu);
 }
 inline void sbc8(u8& lhs, u8 rhs, CPU& cpu) {
-    detail::sub8_impl(lhs, u16(rhs) + cpu.flags.getC(), cpu);
+    detail::sub8_impl(lhs, u16(rhs) + cpu.reg.flags.getC(), cpu);
 }
 
 inline void and_(u8& lhs, u8 rhs, CPU& cpu) {
     const u8 result = lhs & rhs;
-    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.setH();
-    cpu.flags.resetC();
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.setH();
+    cpu.reg.flags.resetC();
 
     lhs = result;
 }
 
 inline void or_(u8& lhs, u8 rhs, CPU& cpu) {
     const u8 result = lhs | rhs;
-    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    cpu.flags.resetC();
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    cpu.reg.flags.resetC();
 
     lhs = result;
 }
 
 inline void xor_(u8& lhs, u8 rhs, CPU& cpu) {
     const u8 result = lhs ^ rhs;
-    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    cpu.flags.resetC();
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    cpu.reg.flags.resetC();
 
     lhs = result;
 }
@@ -96,30 +96,30 @@ inline void swapNybbles(u8& n, CPU& cpu) {
     const u8 lower = n & 0b0000'1111;
     const u8 result = u8(upper >> 4) | u8(lower << 4);
 
-    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    cpu.flags.resetC();
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    cpu.reg.flags.resetC();
 
     n = result;
 }
 
 inline void cp(u8 lhs, u8 rhs, CPU& cpu) {
     if (lhs == rhs) {
-        cpu.flags.setZ();
-        cpu.flags.setH();
-        cpu.flags.setC();
+        cpu.reg.flags.setZ();
+        cpu.reg.flags.setH();
+        cpu.reg.flags.setC();
     } else {
-        cpu.flags.resetZ();
+        cpu.reg.flags.resetZ();
 
-        lhs < rhs ? cpu.flags.setC() : cpu.flags.resetC();
+        lhs < rhs ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
         const u8 noBorrow = lhs ^ rhs;
         const u8 diff = lhs - rhs;
         const u8 borrowResult = noBorrow ^ diff;
         const auto halfCarry = borrowResult & 0b0001'0000;
-        halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
+        halfCarry ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
     }
-    cpu.flags.setN();
+    cpu.reg.flags.setN();
 }
 
 inline void inc(u8& operand, CPU& cpu) {
@@ -128,9 +128,9 @@ inline void inc(u8& operand, CPU& cpu) {
     const u8 result = operand + 1;
     const auto halfCarry = test<4>(result) ^ test<4>(operand);
 
-    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    halfCarry ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
     // C not affected
 
     operand = result;
@@ -142,9 +142,9 @@ inline void dec(u8& operand, CPU& cpu) {
     const u8 result = operand - 1;
     const bool halfCarry = test<4>(result) ^ test<4>(operand);
 
-    result == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.setN();
-    halfCarry ? cpu.flags.setH() : cpu.flags.resetH();
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.setN();
+    halfCarry ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
     // C not affected
 
     operand = result;
@@ -160,9 +160,9 @@ inline void dec(u8& operand, CPU& cpu) {
     const auto halfC = carryResult & 0b0'0001'0000'0000'0000;
 
     // Z not affected
-    cpu.flags.resetN();
-    carry ? cpu.flags.setC() : cpu.flags.resetC();
-    halfC ? cpu.flags.setH() : cpu.flags.resetH();
+    cpu.reg.flags.resetN();
+    carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
+    halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
 
     return u16(result);
 }
@@ -182,14 +182,14 @@ inline void dec(u8& operand, CPU& cpu) {
     const auto carry = carryResult & (1u << 31);
     const auto halfC = carryResult & 0b0'0001'0000'0000'0000;
 
-    cpu.flags.resetZ();
-    cpu.flags.resetN();
+    cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
     if (rhs_signed < 0) {
-        carry ? cpu.flags.resetC() : cpu.flags.setC();
-        halfC ? cpu.flags.resetH() : cpu.flags.setH();
+        carry ? cpu.reg.flags.resetC() : cpu.reg.flags.setC();
+        halfC ? cpu.reg.flags.resetH() : cpu.reg.flags.setH();
     } else {
-        carry ? cpu.flags.setC() : cpu.flags.resetC();
-        halfC ? cpu.flags.setH() : cpu.flags.resetH();
+        carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
+        halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
     }
 
     return u16(result);
@@ -208,8 +208,8 @@ inline void decimalAdjust(u8& operand, CPU& cpu) {
 inline void complement(u8& operand, CPU& cpu) {
     const u8 result = ~operand;
     // Z not affected
-    cpu.flags.setN();
-    cpu.flags.setH();
+    cpu.reg.flags.setN();
+    cpu.reg.flags.setH();
     // C not affected
 
     operand = result;
@@ -223,31 +223,31 @@ inline void rlc(u8& operand, CPU& cpu) {
     bit7 ? bitwise::set<0>(operand) : bitwise::reset<0>(operand);
 
     if constexpr (SetZ) {
-        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+        operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
     } else {
-        cpu.flags.resetZ();
+        cpu.reg.flags.resetZ();
     }
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit7 ? cpu.flags.setC() : cpu.flags.resetC();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit7 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 template <bool SetZ>
 inline void rl(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
-    const bool oldCarry = cpu.flags.getC();
+    const bool oldCarry = cpu.reg.flags.getC();
 
     operand <<= 1u;
     oldCarry ? bitwise::set<0>(operand) : bitwise::reset<0>(operand);
 
     if constexpr (SetZ) {
-        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+        operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
     } else {
-        cpu.flags.resetZ();
+        cpu.reg.flags.resetZ();
     }
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit7 ? cpu.flags.setC() : cpu.flags.resetC();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit7 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 template <bool SetZ>
@@ -258,41 +258,41 @@ inline void rrc(u8& operand, CPU& cpu) {
     bit0 ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
     if constexpr (SetZ) {
-        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+        operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
     } else {
-        cpu.flags.resetZ();
+        cpu.reg.flags.resetZ();
     }
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit0 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 template <bool SetZ>
 inline void rr(u8& operand, CPU& cpu) {
     const bool bit0 = bitwise::test<0>(operand);
-    const bool oldCarry = cpu.flags.getC();
+    const bool oldCarry = cpu.reg.flags.getC();
 
     operand >>= 1u;
     oldCarry ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
     if constexpr (SetZ) {
-        operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
+        operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
     } else {
-        cpu.flags.resetZ();
+        cpu.reg.flags.resetZ();
     }
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit0 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 inline void sla(u8& operand, CPU& cpu) {
     const bool bit7 = bitwise::test<7>(operand);
     operand <<= 1u;
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit7 ? cpu.flags.setC() : cpu.flags.resetC();
+    operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit7 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 inline void sra(u8& operand, CPU& cpu) {
@@ -301,10 +301,10 @@ inline void sra(u8& operand, CPU& cpu) {
     operand >>= 1u;
     bit7 ? bitwise::set<7>(operand) : bitwise::reset<7>(operand);
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+    operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit0 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 inline void srl(u8& operand, CPU& cpu) {
@@ -312,17 +312,17 @@ inline void srl(u8& operand, CPU& cpu) {
     operand >>= 1u;
     bitwise::reset<7>(operand);
 
-    operand == 0 ? cpu.flags.setZ() : cpu.flags.resetZ();
-    cpu.flags.resetN();
-    cpu.flags.resetH();
-    bit0 ? cpu.flags.setC() : cpu.flags.resetC();
+    operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.resetH();
+    bit0 ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 template <unsigned Bit>
 inline void bit(u8 operand, CPU& cpu) {
-    bitwise::test<Bit>(operand) ? cpu.flags.resetZ() : cpu.flags.setZ();
-    cpu.flags.resetN();
-    cpu.flags.setH();
+    bitwise::test<Bit>(operand) ? cpu.reg.flags.resetZ() : cpu.reg.flags.setZ();
+    cpu.reg.flags.resetN();
+    cpu.reg.flags.setH();
     // C not affected
 }
 template <unsigned Bit>

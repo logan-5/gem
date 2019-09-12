@@ -23,7 +23,7 @@ _GEN_SKELETON = """\
     do {{                                                            \\
         std::cerr << "unimplemented opcode: 0x" << std::setfill('0') \\
                     << std::setw(2) << std::hex << int(WHICH)        \\
-                    << " at PC 0x" << std::hex << cpu.reg.PC         \\
+                    << " at PC 0x" << std::hex << cpu.reg.getPC()    \\
                     << '\\n';                                        \\
         GEM_UNREACHABLE();                                           \\
     }}                                                               \\
@@ -55,17 +55,17 @@ gem::Opcode gem::op::getOpcode(const gem::u8 code, const gem::CPU& cpu) {{
     UNIMPLEMENTED_OPCODE(code);
 }}
 gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
-    GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::setfill('0') << std::setw(4) << std::hex << (cpu.reg.PC-1)
+    GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::setfill('0') << std::setw(4) << std::hex << (cpu.reg.getPC()-1)
         << "\\n\\tAF: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getAF()
         << "\\n\\tBC: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getBC()
         << "\\n\\tDE: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getDE()
         << "\\n\\tHL: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getHL()
         << "\\n\\tSP: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getSP()
         << "\\n\\tPC: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getPC()-1
-            << "\\n\\tZ: " << cpu.flags.getZ() 
-            << ", N: " << cpu.flags.getN() 
-            << ", H: " << cpu.flags.getH() 
-            << ", C: " << cpu.flags.getC());
+            << "\\n\\tZ: " << cpu.reg.flags.getZ() 
+            << ", N: " << cpu.reg.flags.getN() 
+            << ", H: " << cpu.reg.flags.getH() 
+            << ", C: " << cpu.reg.flags.getC());
     switch (opcode) {{
         {runners}
     }}

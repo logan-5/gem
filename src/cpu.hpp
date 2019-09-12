@@ -11,42 +11,6 @@
 
 namespace gem {
 
-struct Registers {
-#define REGISTER_PAIR(FIRST, SECOND)                  \
-    u8 FIRST, SECOND;                                 \
-    u16 get##FIRST##SECOND() const {                  \
-        return u16(u16(FIRST) << 8u) | u16(SECOND);   \
-    }                                                 \
-    void set##FIRST##SECOND(const u16 fs) {           \
-        FIRST = u8(fs >> 8u);                         \
-        SECOND = u8(fs & 0xFF);                       \
-    }                                                 \
-    void inc##FIRST##SECOND() {                       \
-        set##FIRST##SECOND(get##FIRST##SECOND() + 1); \
-    }                                                 \
-    void dec##FIRST##SECOND() { set##FIRST##SECOND(get##FIRST##SECOND() - 1); }
-    REGISTER_PAIR(A, F)
-    REGISTER_PAIR(B, C)
-    REGISTER_PAIR(D, E)
-    REGISTER_PAIR(H, L)
-
-    u16 SP = 0xFFFE;
-    u16 PC = 0x100;
-
-    // for symmetry with the 16-bit registers as macro'd out above
-    u16 getSP() const { return SP; }
-    void setSP(const u16 sp) { SP = sp; }
-    void incSP() { ++SP; }
-    void decSP() { --SP; }
-
-    u16 getPC() const { return PC; }
-    void setPC(const u16 pc) { PC = pc; }
-    void incPC() { ++PC; }
-    void decPC() { --PC; }
-
-#undef REGISTER_PAIR
-};
-
 struct FlagRegister {
     bool getZ() const { return get<7>(); }
     void setZ() { set<7>(); }
@@ -68,6 +32,9 @@ struct FlagRegister {
     void toggleC() { toggle<4>(); }
     void resetC() { reset<4>(); }
 
+    void set(const u8 val) { r = val & 0xF0; }
+    u8 get() const noexcept { return r; }
+
    private:
     template <unsigned Bit>
     bool get() const {
@@ -88,11 +55,86 @@ struct FlagRegister {
     u8 r = 0;
 };
 
+struct Registers {
+#define REGISTER_GET_SET(FIRST, SECOND)                       \
+   private:                                                   \
+    u8 FIRST, SECOND;                                         \
+                                                              \
+   public:                                                    \
+    void set##FIRST(const u8 val) noexcept { FIRST = val; }   \
+    u8 get##FIRST() const noexcept { return FIRST; }          \
+    u8& get##FIRST##Mut() noexcept { return FIRST; }          \
+    void set##SECOND(const u8 val) noexcept { SECOND = val; } \
+    u8 get##SECOND() const noexcept { return SECOND; }        \
+    u8& get##SECOND##Mut() noexcept { return SECOND; }
+
+   private:
+    u8 A;
+    u8 F;
+
+   public:
+    FlagRegister flags;
+
+   public:
+    void setA(const u8 val) noexcept { A = val; }
+    u8 getA() const noexcept { return A; }
+    u8& getAMut() noexcept { return A; }
+    void setF(const u8 val) noexcept { flags.set(val); }
+    u8 getF() const noexcept { return flags.get(); }
+
+    REGISTER_GET_SET(B, C)
+    REGISTER_GET_SET(D, E)
+    REGISTER_GET_SET(H, L)
+
+#define REGISTER_PAIR(FIRST, SECOND)                              \
+   public:                                                        \
+    u16 get##FIRST##SECOND() const noexcept {                     \
+        return u16(u16(get##FIRST()) << 8u) | u16(get##SECOND()); \
+    }                                                             \
+    void set##FIRST##SECOND(const u16 fs) noexcept {              \
+        set##FIRST(u8(fs >> 8u));                                 \
+        set##SECOND(u8(fs & 0xFF));                               \
+    }                                                             \
+    void inc##FIRST##SECOND() noexcept {                          \
+        set##FIRST##SECOND(get##FIRST##SECOND() + 1);             \
+    }                                                             \
+    void dec##FIRST##SECOND() noexcept {                          \
+        set##FIRST##SECOND(get##FIRST##SECOND() - 1);             \
+    }
+
+    REGISTER_PAIR(A, F)
+    REGISTER_PAIR(B, C)
+    REGISTER_PAIR(D, E)
+    REGISTER_PAIR(H, L)
+
+   private:
+    u16 SP = 0xFFFE;
+    u16 PC = 0x100;
+
+   public:
+    u16 getSP() const { return SP; }
+    void setSP(const u16 sp) { SP = sp; }
+    void incSP() { ++SP; }
+    void decSP() { --SP; }
+    void incSP2() { SP += 2; }
+    void decSP2() { SP -= 2; }
+
+    u16 getPC() const { return PC; }
+    void setPC(const u16 pc) { PC = pc; }
+    void incPC() { ++PC; }
+    void decPC() { --PC; }
+    void incPC(const i8 val) { PC += val; }
+
+    friend struct CPU;
+
+#undef REGISTER_PAIR
+#undef REGISTER_GET_SET
+};
+
 struct CPU {
     explicit CPU(Mem& in_bus) : bus{in_bus} {}
 
     Registers reg;
-    FlagRegister flags;
     Mem& bus;
 
     void execute() {

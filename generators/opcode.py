@@ -30,7 +30,7 @@ Opcode('NOP', '0x00', 0, 4, '', False)
 
 
 def LDnn_n(nn, code):
-    return Opcode('LD {}, n'.format(nn), code, 1, 8, 'cpu.reg.{} = cpu.readPC();'.format(nn), False)
+    return Opcode('LD {}, n'.format(nn), code, 1, 8, 'cpu.reg.set{}(cpu.readPC());'.format(nn), False)
 
 
 LDnn_n('B', '0x06')
@@ -42,7 +42,7 @@ LDnn_n('L', '0x2E')
 
 
 def LDr1_r2(r1, r2, code):
-    return Opcode('LD {}, {}'.format(r1, r2), code, 0, 4, 'cpu.reg.{} = cpu.reg.{};'.format(r1, r2) if r1 != r2 else '', False)
+    return Opcode('LD {}, {}'.format(r1, r2), code, 0, 4, 'cpu.reg.set{}(cpu.reg.get{}());'.format(r1, r2) if r1 != r2 else '', False)
 
 
 LDr1_r2('A', 'A', '0x7F')
@@ -54,21 +54,21 @@ LDr1_r2('A', 'H', '0x7C')
 LDr1_r2('A', 'L', '0x7D')
 
 Opcode('LD A, (BC)', '0x0A', 0, 8,
-       'cpu.reg.A = cpu.bus.read(cpu.reg.getBC());', False)
+       'cpu.reg.setA(cpu.bus.read(cpu.reg.getBC()));', False)
 Opcode('LD A, (DE)', '0x1A', 0, 8,
-       'cpu.reg.A = cpu.bus.read(cpu.reg.getDE());', False)
+       'cpu.reg.setA(cpu.bus.read(cpu.reg.getDE()));', False)
 Opcode('LD A, (nn)', '0xFA', 2, 8,
-       'cpu.reg.A = cpu.bus.read(cpu.readPC16());', False)
-Opcode('LD A, n', '0x3E', 1, 8, 'cpu.reg.A = cpu.readPC();', False)
+       'cpu.reg.setA(cpu.bus.read(cpu.readPC16()));', False)
+Opcode('LD A, n', '0x3E', 1, 8, 'cpu.reg.setA(cpu.readPC());', False)
 
 Opcode('LD (BC), A', '0x02', 0, 8,
-       'cpu.bus.write(cpu.reg.getBC(), cpu.reg.A);', False)
+       'cpu.bus.write(cpu.reg.getBC(), cpu.reg.getA());', False)
 Opcode('LD (DE), A', '0x12', 0, 8,
-       'cpu.bus.write(cpu.reg.getDE(), cpu.reg.A);', False)
+       'cpu.bus.write(cpu.reg.getDE(), cpu.reg.getA());', False)
 Opcode('LD (HL), A', '0x77', 0, 8,
-       'cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);', False)
+       'cpu.bus.write(cpu.reg.getHL(), cpu.reg.getA());', False)
 Opcode('LD (nn), A', '0xEA', 2, 16,
-       'cpu.bus.write(cpu.readPC16(), cpu.reg.A);', False)
+       'cpu.bus.write(cpu.readPC16(), cpu.reg.getA());', False)
 
 LDr1_r2('B', 'B', '0x40')
 LDr1_r2('B', 'C', '0x41')
@@ -114,7 +114,7 @@ LDr1_r2('L', 'L', '0x6D')
 
 
 def LDr1_addrHL(r1, code):
-    return Opcode('LD {}, (HL)'.format(r1), code, 0, 8, 'cpu.reg.{} = cpu.bus.read(cpu.reg.getHL());'.format(r1), False)
+    return Opcode('LD {}, (HL)'.format(r1), code, 0, 8, 'cpu.reg.set{}(cpu.bus.read(cpu.reg.getHL()));'.format(r1), False)
 
 
 LDr1_addrHL('A', '0x7E')
@@ -127,11 +127,11 @@ LDr1_addrHL('L', '0x6E')
 
 
 def LDaddrHL_r2(r2, code):
-    return Opcode('LD (HL), {}'.format(r2), code, 0, 8, 'cpu.bus.write(cpu.reg.getHL(), cpu.reg.{});'.format(r2), False)
+    return Opcode('LD (HL), {}'.format(r2), code, 0, 8, 'cpu.bus.write(cpu.reg.getHL(), cpu.reg.get{}());'.format(r2), False)
 
 
 def LDn_A(n, code):
-    return Opcode('LD {}, A'.format(n), code, 0, 4, 'cpu.reg.{} = cpu.reg.A;'.format(n), False)
+    return Opcode('LD {}, A'.format(n), code, 0, 4, 'cpu.reg.set{}(cpu.reg.getA());'.format(n), False)
 
 
 LDn_A('B', '0x47')
@@ -153,22 +153,22 @@ Opcode('LD (HL), n', '0x36', 1, 12,
 
 
 Opcode('LD A, (C)', '0xF2', 0, 8,
-       'cpu.reg.A = cpu.bus.read(0xFF00 + cpu.reg.C);', False)
+       'cpu.reg.setA(cpu.bus.read(0xFF00 + cpu.reg.getC()));', False)
 Opcode('LD (C), A', '0xE2', 0, 8,
-       'cpu.bus.write(0xFF00 + cpu.reg.C, cpu.reg.A);', False)
+       'cpu.bus.write(0xFF00 + cpu.reg.getC(), cpu.reg.getA());', False)
 
-Opcode('LDD A, (HL)', '0x3A', 0, 8, """cpu.reg.A = cpu.bus.read(cpu.reg.getHL());
+Opcode('LDD A, (HL)', '0x3A', 0, 8, """cpu.reg.setA(cpu.bus.read(cpu.reg.getHL()));
     cpu.reg.decHL();""", False)
-Opcode('LDD (HL), A', '0x32', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);
+Opcode('LDD (HL), A', '0x32', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.getA());
     cpu.reg.decHL();""", False)
-Opcode('LDI A, (HL)', '0x2A', 0, 8, """cpu.reg.A = cpu.bus.read(cpu.reg.getHL());
+Opcode('LDI A, (HL)', '0x2A', 0, 8, """cpu.reg.setA(cpu.bus.read(cpu.reg.getHL()));
     cpu.reg.incHL();""", False)
-Opcode('LDI (HL), A', '0x22', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.A);
+Opcode('LDI (HL), A', '0x22', 0, 8, """cpu.bus.write(cpu.reg.getHL(), cpu.reg.getA());
     cpu.reg.incHL();""", False)
 Opcode('LDH (n), A', '0xE0', 1, 8,
-       'cpu.bus.write(0xFF00 + cpu.readPC(), cpu.reg.A);', False)
+       'cpu.bus.write(0xFF00 + cpu.readPC(), cpu.reg.getA());', False)
 Opcode('LDH A, (n)', '0xF0', 1, 8,
-       'cpu.reg.A = cpu.bus.read(0xFF00 + cpu.readPC());', False)
+       'cpu.reg.setA(cpu.bus.read(0xFF00 + cpu.readPC()));', False)
 
 ####################################################################################################
 # 16-BIT LOADS #####################################################################################
@@ -185,7 +185,7 @@ LDn_nn_16('HL', '0x21')
 LDn_nn_16('SP', '0x31')
 
 Opcode('LD SP, HL', '0xF9', 0, 8, 'cpu.reg.setSP(cpu.reg.getHL());', False)
-Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.reg.SP, cpu.readPC(), cpu);
+Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.reg.getSP(), cpu.readPC(), cpu);
     cpu.reg.setHL(addr);""", False)  # ???????
 
 Opcode('LD (nn), SP', '0x08', 1, 20,
@@ -207,8 +207,8 @@ helper_functions.append("""\
 #define GEM_DEBUG_PUSH_STACK(...) do {} while (false)
 #endif
 void pushStack(gem::u16 val, gem::CPU& cpu) {
-    cpu.reg.SP -= 2;
-    cpu.bus.write(cpu.reg.SP, val);
+    cpu.reg.decSP2();
+    cpu.bus.write(cpu.reg.getSP(), val);
     GEM_DEBUG_PUSH_STACK(val);
 }
 #undef GEM_DEBUG_PUSH_STACK""")
@@ -223,10 +223,10 @@ helper_functions.append("""\
 #endif
 gem::u16 popStack(gem::CPU& cpu) {
     using namespace gem;
-    const u8* const ptr = cpu.bus.ptr(cpu.reg.SP);
+    const u8* const ptr = cpu.bus.ptr(cpu.reg.getSP());
     u16 val;
     std::memcpy(&val, ptr, sizeof val);
-    cpu.reg.SP += 2;
+    cpu.reg.incSP2();
 
     GEM_DEBUG_POP_STACK(val);
     return val;
@@ -259,7 +259,7 @@ POP_nn('HL', '0xE1')
 
 
 def ADD(r, code):
-    return Opcode('ADD A, {}'.format(r), code, 0, 4, 'alu::add8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('ADD A, {}'.format(r), code, 0, 4, 'alu::add8(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 ADD('A', '0x87')
@@ -270,13 +270,13 @@ ADD('E', '0x83')
 ADD('H', '0x84')
 ADD('L', '0x85')
 Opcode('ADD A, (HL)', '0x86', 0, 8,
-       'alu::add8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::add8(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('ADD A, n', '0xC6', 1, 8,
-       'alu::add8(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::add8(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def ADC(r, code):
-    return Opcode('ADC A, {}'.format(r), code, 0, 4, 'alu::adc8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('ADC A, {}'.format(r), code, 0, 4, 'alu::adc8(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 ADC('A', '0x8F')
@@ -287,13 +287,13 @@ ADC('E', '0x8B')
 ADC('H', '0x8C')
 ADC('L', '0x8D')
 Opcode('ADC A, (HL)', '0x8E', 0, 8,
-       'alu::adc8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::adc8(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('ADC A, n', '0xCE', 1, 8,
-       'alu::adc8(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::adc8(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def SUB(r, code):
-    return Opcode('SUB A, {}'.format(r), code, 0, 4, 'alu::sub8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('SUB A, {}'.format(r), code, 0, 4, 'alu::sub8(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 SUB('A', '0x97')
@@ -304,13 +304,13 @@ SUB('E', '0x93')
 SUB('H', '0x94')
 SUB('L', '0x95')
 Opcode('SUB A, (HL)', '0x96', 0, 8,
-       'alu::sub8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::sub8(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('SUB A, n', '0xD6', 1, 8,
-       'alu::sub8(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::sub8(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def SBC(r, code):
-    return Opcode('SBC A, {}'.format(r), code, 0, 4, 'alu::sbc8(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('SBC A, {}'.format(r), code, 0, 4, 'alu::sbc8(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 SBC('A', '0x9F')
@@ -321,11 +321,11 @@ SBC('E', '0x9B')
 SBC('H', '0x9C')
 SBC('L', '0x9D')
 Opcode('SBC A, (HL)', '0x9E', 0, 8,
-       'alu::sbc8(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::sbc8(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 
 
 def AND(r, code):
-    return Opcode('AND {}'.format(r), code, 0, 4, 'alu::and_(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('AND {}'.format(r), code, 0, 4, 'alu::and_(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 AND('A', '0xA7')
@@ -336,13 +336,13 @@ AND('E', '0xA3')
 AND('H', '0xA4')
 AND('L', '0xA5')
 Opcode('AND (HL)', '0xA6', 0, 8,
-       'alu::and_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::and_(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('AND n', '0xE6', 0, 8,
-       'alu::and_(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::and_(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def OR(r, code):
-    return Opcode('OR {}'.format(r), code, 0, 4, 'alu::or_(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('OR {}'.format(r), code, 0, 4, 'alu::or_(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 OR('A', '0xB7')
@@ -353,13 +353,13 @@ OR('E', '0xB3')
 OR('H', '0xB4')
 OR('L', '0xB5')
 Opcode('OR (HL)', '0xB6', 0, 8,
-       'alu::or_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::or_(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('OR n', '0xF6', 0, 8,
-       'alu::or_(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::or_(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def XOR(r, code):
-    return Opcode('XOR {}'.format(r), code, 0, 4, 'alu::xor_(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('XOR {}'.format(r), code, 0, 4, 'alu::xor_(cpu.reg.getAMut(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 XOR('A', '0xAF')
@@ -370,13 +370,13 @@ XOR('E', '0xAB')
 XOR('H', '0xAC')
 XOR('L', '0xAD')
 Opcode('XOR (HL)', '0xAE', 0, 8,
-       'alu::xor_(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::xor_(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('XOR n', '0xEE', 0, 8,
-       'alu::xor_(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::xor_(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def CP(r, code):
-    return Opcode('CP {}'.format(r), code, 0, 4, 'alu::cp(cpu.reg.A, cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('CP {}'.format(r), code, 0, 4, 'alu::cp(cpu.reg.getA(), cpu.reg.get{}(), cpu);'.format(r), False)
 
 
 CP('A', '0xBF')
@@ -387,13 +387,13 @@ CP('E', '0xBB')
 CP('H', '0xBC')
 CP('L', '0xBD')
 Opcode('CP (HL)', '0xBE', 0, 8,
-       'alu::cp(cpu.reg.A, cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+       'alu::cp(cpu.reg.getA(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
 Opcode('CP n', '0xFE', 1, 8,
-       'alu::cp(cpu.reg.A, cpu.readPC(), cpu);', False)
+       'alu::cp(cpu.reg.getA(), cpu.readPC(), cpu);', False)
 
 
 def INC(r, code):
-    return Opcode('INC {}'.format(r), code, 0, 4, 'alu::inc(cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('INC {}'.format(r), code, 0, 4, 'alu::inc(cpu.reg.get{}Mut(), cpu);'.format(r), False)
 
 
 INC('A', '0x3C')
@@ -409,7 +409,7 @@ Opcode('INC (HL)', '0x34', 0, 12, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 
 
 def DEC(r, code):
-    return Opcode('DEC {}'.format(r), code, 0, 4, 'alu::dec(cpu.reg.{}, cpu);'.format(r), False)
+    return Opcode('DEC {}'.format(r), code, 0, 4, 'alu::dec(cpu.reg.get{}Mut(), cpu);'.format(r), False)
 
 
 DEC('A', '0x3D')
@@ -438,7 +438,7 @@ ADD_HL('HL', '0x29')
 ADD_HL('SP', '0x39')
 
 Opcode('ADD SP, n', '0xE8', 2, 16,
-       'cpu.reg.SP = alu::add16Signed8(cpu.reg.SP, cpu.readPC(), cpu);', False)
+       'cpu.reg.setSP(alu::add16Signed8(cpu.reg.getSP(), cpu.readPC(), cpu));', False)
 
 
 def INC_NN(nn, code):
@@ -469,7 +469,7 @@ two_byte_prefixes.add('0xCB')
 
 
 def SWAP(n, code):
-    return Opcode('SWAP {}'.format(n), '0xCB', 0, 8, 'alu::swapNybbles(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('SWAP {}'.format(n), '0xCB', 0, 8, 'alu::swapNybbles(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 SWAP('A', '0x37')
@@ -483,28 +483,28 @@ Opcode('SWAP (HL)', '0xCB', 0, 8, """u8 temp = cpu.bus.read(cpu.reg.getHL());
         alu::swapNybbles(temp, cpu);
         cpu.bus.write(cpu.reg.getHL(), temp);""", False, '0x36')
 
-Opcode('DAA', '0x27', 0, 4, 'alu::decimalAdjust(cpu.reg.A, cpu);', False)
+Opcode('DAA', '0x27', 0, 4, 'alu::decimalAdjust(cpu.reg.getAMut(), cpu);', False)
 
-Opcode('CPL', '0x2F', 0, 4, 'alu::complement(cpu.reg.A, cpu);', False)
+Opcode('CPL', '0x2F', 0, 4, 'alu::complement(cpu.reg.getAMut(), cpu);', False)
 
-Opcode('CCF', '0x3F', 0, 4, """cpu.flags.resetN();
-        cpu.flags.resetH();
-        cpu.flags.toggleC();""", False)
+Opcode('CCF', '0x3F', 0, 4, """cpu.reg.flags.resetN();
+        cpu.reg.flags.resetH();
+        cpu.reg.flags.toggleC();""", False)
 
-Opcode('SCF', '0x37', 0, 4, """cpu.flags.resetN();
-        cpu.flags.resetH();
-        cpu.flags.setC();""", False)
+Opcode('SCF', '0x37', 0, 4, """cpu.reg.flags.resetN();
+        cpu.reg.flags.resetH();
+        cpu.reg.flags.setC();""", False)
 
 ####################################################################################################
 # ROTATES & SHIFTS #################################################################################
 ####################################################################################################
 
-Opcode('RLCA', '0x07', 0, 4, 'alu::rlc<false>(cpu.reg.A, cpu);', False)
-Opcode('RLA', '0x17', 0, 4, 'alu::rl<false>(cpu.reg.A, cpu);', False)
+Opcode('RLCA', '0x07', 0, 4, 'alu::rlc<false>(cpu.reg.getAMut(), cpu);', False)
+Opcode('RLA', '0x17', 0, 4, 'alu::rl<false>(cpu.reg.getAMut(), cpu);', False)
 
 
 def RLC_n(n, code):
-    return Opcode('RLC {}'.format(n), '0xCB', 0, 8, 'alu::rlc<true>(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RLC {}'.format(n), '0xCB', 0, 8, 'alu::rlc<true>(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 RLC_n('A', '0x07')
@@ -520,7 +520,7 @@ Opcode('RLC (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 
 
 def RL_n(n, code):
-    return Opcode('RL {}'.format(n), '0xCB', 0, 8, 'alu::rl<true>(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RL {}'.format(n), '0xCB', 0, 8, 'alu::rl<true>(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 RL_n('A', '0x17')
@@ -534,12 +534,12 @@ Opcode('RL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
     alu::rl<true>(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x16')
 
-Opcode('RRCA', '0x0F', 0, 4, 'alu::rr<false>(cpu.reg.A, cpu);', False)
-Opcode('RRA', '0x1F', 0, 4, 'alu::rr<false>(cpu.reg.A, cpu);', False)
+Opcode('RRCA', '0x0F', 0, 4, 'alu::rr<false>(cpu.reg.getAMut(), cpu);', False)
+Opcode('RRA', '0x1F', 0, 4, 'alu::rr<false>(cpu.reg.getAMut(), cpu);', False)
 
 
 def RRC_n(n, code):
-    return Opcode('RRC {}'.format(n), '0xCB', 0, 8, 'alu::rrc<true>(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RRC {}'.format(n), '0xCB', 0, 8, 'alu::rrc<true>(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 RRC_n('A', '0x0F')
@@ -555,7 +555,7 @@ Opcode('RRC (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 
 
 def RR_n(n, code):
-    return Opcode('RR {}'.format(n), '0xCB', 0, 8, 'alu::rr<true>(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('RR {}'.format(n), '0xCB', 0, 8, 'alu::rr<true>(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 RR_n('A', '0x1F')
@@ -571,7 +571,7 @@ Opcode('RR (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 
 
 def SLA_n(n, code):
-    return Opcode('SLA {}'.format(n), '0xCB', 0, 8, 'alu::sla(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('SLA {}'.format(n), '0xCB', 0, 8, 'alu::sla(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 SLA_n('A', '0x27')
@@ -587,7 +587,7 @@ Opcode('SLA (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 
 
 def SRA_n(n, code):
-    return Opcode('SRA {}'.format(n), '0xCB', 0, 8, 'alu::sra(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('SRA {}'.format(n), '0xCB', 0, 8, 'alu::sra(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 SRA_n('A', '0x2F')
@@ -603,7 +603,7 @@ Opcode('SRA (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
 
 
 def SRL_n(n, code):
-    return Opcode('SRL {}'.format(n), '0xCB', 0, 8, 'alu::srl(cpu.reg.{}, cpu);'.format(n), False, code)
+    return Opcode('SRL {}'.format(n), '0xCB', 0, 8, 'alu::srl(cpu.reg.get{}Mut(), cpu);'.format(n), False, code)
 
 
 SRL_n('A', '0x3F')
@@ -626,7 +626,7 @@ def BIT(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
         Opcode('BIT {1}, {0}'.format(n, b), '0xCB', 0, 8,
-               'alu::bit<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
+               'alu::bit<{1}>(cpu.reg.get{0}(), cpu);'.format(n, b), False, hex(code_i))
 
 
 BIT('A', '0x47')
@@ -646,7 +646,7 @@ def SET(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
         Opcode('SET {1}, {0}'.format(n, b), '0xCB', 0, 8,
-               'alu::set<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
+               'alu::set<{1}>(cpu.reg.get{0}Mut(), cpu);'.format(n, b), False, hex(code_i))
 
 
 SET('A', '0xC7')
@@ -667,7 +667,7 @@ def RES(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
     Opcode('RES {1}, {0}'.format(n, b), '0xCB', 0, 8,
-           'alu::res<{1}>(cpu.reg.{0}, cpu);'.format(n, b), False, hex(code_i))
+           'alu::res<{1}>(cpu.reg.get{0}Mut(), cpu);'.format(n, b), False, hex(code_i))
 
 
 RES('A', '0x87')
@@ -689,13 +689,13 @@ for b in xrange(0, 8):
 
 helper_functions.append("""\
 void JP_nn_impl(gem::CPU& cpu) {
-    cpu.reg.PC = cpu.readPC16();
+    cpu.reg.setPC(cpu.readPC16());
 }""")
 Opcode('JP nn', '0xC3', 2, 12, 'JP_nn_impl(cpu);', True)
 
 
 def JP_cc(cc, code, flag, reset):
-    return Opcode('JP {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
+    return Opcode('JP {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.reg.flags.get{0}()) {{
         JP_nn_impl(cpu);
         ticks += 4;
     }} else {{ (void)cpu.readPC16(); }}""".format(flag, '!' if reset else ''), True)
@@ -706,7 +706,8 @@ JP_cc('Z', '0xCA', 'Z', False)
 JP_cc('NC', '0xD2', 'C', True)
 JP_cc('C', '0xDA', 'C', False)
 
-Opcode('JP (HL)', '0xE9', 0, 4, 'cpu.reg.PC = cpu.bus.read(cpu.reg.getHL());', True)
+Opcode('JP (HL)', '0xE9', 0, 4,
+       'cpu.reg.setPC(cpu.bus.read(cpu.reg.getHL()));', True)
 
 helper_functions.append("""\
 void JR_n_impl(gem::CPU& cpu) {
@@ -714,14 +715,14 @@ void JR_n_impl(gem::CPU& cpu) {
     const u8 byte = cpu.readPC();
     i8 val;
     std::memcpy(&val, &byte, sizeof val);
-    cpu.reg.PC += val;
+    cpu.reg.incPC(val);
 }""")
 
 Opcode('JR n', '0x18', 1, 12, 'JR_n_impl(cpu);', True)
 
 
 def JR_cc_n(cc, code, flag, reset):
-    return Opcode('JR {}, n'.format(cc), code, 1, 8, """if ({1}cpu.flags.get{0}()) {{
+    return Opcode('JR {}, n'.format(cc), code, 1, 8, """if ({1}cpu.reg.flags.get{0}()) {{
         JR_n_impl(cpu);
         ticks += 4;
     }} else {{ (void)cpu.readPC(); }}""".format(flag, '!' if reset else ''), True)
@@ -736,15 +737,15 @@ helper_functions.append("""\
 void call_impl(gem::CPU& cpu) {
     using namespace gem;
     const u16 target = cpu.readPC16();
-    pushStack(cpu.reg.PC, cpu);
-    cpu.reg.PC = target;
+    pushStack(cpu.reg.getPC(), cpu);
+    cpu.reg.setPC(target);
 }""")
 
 Opcode('CALL nn', '0xCD', 2, 24, 'call_impl(cpu);', True)
 
 
 def CALL_cc_nn(cc, code, flag, reset):
-    return Opcode('CALL {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.flags.get{0}()) {{
+    return Opcode('CALL {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.reg.flags.get{0}()) {{
         call_impl(cpu);
         ticks += 12;
     }}""".format(flag, '!' if reset else ''), True)
@@ -761,8 +762,8 @@ CALL_cc_nn('C', '0xDC', 'C', False)
 
 for n in (0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38):
     code = hex(n + 0xC7)
-    Opcode('RST {}'.format(hex(n)), code, 0, 32, """pushStack(cpu.reg.PC, cpu);
-    cpu.reg.PC = 0x00 + {};
+    Opcode('RST {}'.format(hex(n)), code, 0, 32, """pushStack(cpu.reg.getPC(), cpu);
+    cpu.reg.setPC(0x00 + {});
     """.format(hex(n)), True)
 
 ####################################################################################################
@@ -773,14 +774,14 @@ helper_functions.append("""\
 void ret_impl(gem::CPU& cpu) {
     using namespace gem;
     const u16 next = popStack(cpu);
-    cpu.reg.PC = next;   
+    cpu.reg.setPC(next);   
 }""")
 
 Opcode('RET', '0xC9', 0, 8, 'ret_impl(cpu);', False)
 
 
 def RET_cc(cc, code, flag, reset):
-    return Opcode('RET {}'.format(cc), code, 0, 8, """if ({1}cpu.flags.get{0}()) {{
+    return Opcode('RET {}'.format(cc), code, 0, 8, """if ({1}cpu.reg.flags.get{0}()) {{
         ret_impl(cpu);
         ticks += 12;
     }}""".format(flag, '!' if reset else ''), True)
