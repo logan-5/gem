@@ -24,7 +24,7 @@
 #endif
 
 #ifndef NDEBUG
-#define GEM_DEBUG_LOGGING true
+// #define GEM_DEBUG_LOGGING true
 #endif
 
 #if GEM_DEBUG_LOGGING

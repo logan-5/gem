@@ -70,7 +70,6 @@ struct Registers {
 
    private:
     u8 A;
-    u8 F;
 
    public:
     FlagRegister flags;
@@ -116,8 +115,6 @@ struct Registers {
     void setSP(const u16 sp) { SP = sp; }
     void incSP() { ++SP; }
     void decSP() { --SP; }
-    void incSP2() { SP += 2; }
-    void decSP2() { SP -= 2; }
 
     u16 getPC() const { return PC; }
     void setPC(const u16 pc) { PC = pc; }

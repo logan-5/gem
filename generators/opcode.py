@@ -193,7 +193,7 @@ Opcode('LD (nn), SP', '0x08', 1, 20,
 
 globals_.append("""\
 #ifndef NDEBUG
-#define GEM_DEBUG_STACK true
+#define GEM_DEBUG_STACK false
 #endif
 
 #if GEM_DEBUG_STACK

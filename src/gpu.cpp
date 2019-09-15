@@ -129,7 +129,7 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
     GEM_ASSERT(gpu.currentLine == 153);
     gpu.currentLine = 0;
-    //    std::cout << "\n\n\n\n\n\n\n";
+    std::cout << "\n\n\n\n\n\n\n";
     return Mode_ScanlineOAM{};
 }
 
@@ -222,21 +222,20 @@ u16 getTileMapIndex(const u16 offsetX, const u16 offsetY, const u16 mapStart) {
 }
 
 void dumpColor(const GPU::ColorCode c) {
-    //
-    //    switch (c) {
-    //        case GPU::ColorCode::C00:
-    //            std::cout << ' ';
-    //            break;
-    //        case GPU::ColorCode::C10:
-    //            std::cout << '#';
-    //            break;
-    //        case GPU::ColorCode::C01:
-    //            std::cout << '*';
-    //            break;
-    //        case GPU::ColorCode::C11:
-    //            std::cout << '&';
-    //            break;
-    //    }
+    switch (c) {
+        case GPU::ColorCode::C00:
+            std::cout << ' ';
+            break;
+        case GPU::ColorCode::C10:
+            std::cout << '#';
+            break;
+        case GPU::ColorCode::C01:
+            std::cout << '*';
+            break;
+        case GPU::ColorCode::C11:
+            std::cout << '&';
+            break;
+    }
 }
 
 }  // namespace
@@ -266,7 +265,7 @@ void GPU::renderScanLine() {
               tile->pixels[pixelColumn + pixelRow * GPU::Tile::Width];
         dumpColor(pixel);
     }
-    //    std::cout << '\n';
+    std::cout << '\n';
 }
 
 }  // namespace gem

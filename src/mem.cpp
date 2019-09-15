@@ -6,6 +6,8 @@
 
 #include <array>
 
+#include <iostream>
+
 namespace {
 constexpr std::array<gem::u8, 2> zeroData{0x00, 0x00};
 std::array<gem::u8, 2> garbage{0x00, 0x00};
@@ -24,8 +26,16 @@ Mem::Mem(Block rom, GPU& gpu)
 u8 Mem::read(u16 address) const {
     return *ptr(address);
 }
+
+static u8 lastFF01 = 'h';
 void Mem::write(u16 address, u8 value) {
-    *mut_ptr(address) = value;
+    if (address == 0xFF01) {
+        lastFF01 = value;
+    } else if (address == 0xFF02 && value == 0x81) {
+        std::cout << lastFF01;
+    } else {
+        *mut_ptr(address) = value;
+    }
 }
 void Mem::write(const u16 address, const u16 value) {
     std::memcpy(mut_ptr(address), &value, 2);
@@ -38,7 +48,7 @@ struct GetPtr {
           const u16 address) const {
         switch (address & 0xF000) {
             case 0x0000: {
-                if (!mem.bootstrap.empty() && address <= 0xFF) {
+                if (false && !mem.bootstrap.empty() && address <= 0xFF) {
                     return mem.bootstrap.data() + address;
                 }
                 [[fallthrough]];
