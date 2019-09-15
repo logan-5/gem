@@ -107,8 +107,8 @@ inline void swapNybbles(u8& n, CPU& cpu) {
 inline void cp(u8 lhs, u8 rhs, CPU& cpu) {
     if (lhs == rhs) {
         cpu.reg.flags.setZ();
-        cpu.reg.flags.setH();
-        cpu.reg.flags.setC();
+        cpu.reg.flags.resetH();
+        cpu.reg.flags.resetC();
     } else {
         cpu.reg.flags.resetZ();
 

@@ -207,8 +207,15 @@ helper_functions.append("""\
 #define GEM_DEBUG_PUSH_STACK(...) do {} while (false)
 #endif
 void pushStack(gem::u16 val, gem::CPU& cpu) {
-    cpu.reg.decSP2();
-    cpu.bus.write(cpu.reg.getSP(), val);
+    using namespace gem;
+    const u8 low8 = u8(val & 0x00FF);
+    const u8 high8 = u8(val >> 8u);
+
+    cpu.reg.decSP();
+    cpu.bus.write(cpu.reg.getSP(), high8);
+    cpu.reg.decSP();
+    cpu.bus.write(cpu.reg.getSP(), low8);
+
     GEM_DEBUG_PUSH_STACK(val);
 }
 #undef GEM_DEBUG_PUSH_STACK""")
@@ -223,10 +230,13 @@ helper_functions.append("""\
 #endif
 gem::u16 popStack(gem::CPU& cpu) {
     using namespace gem;
-    const u8* const ptr = cpu.bus.ptr(cpu.reg.getSP());
-    u16 val;
-    std::memcpy(&val, ptr, sizeof val);
-    cpu.reg.incSP2();
+
+    const u8 low8 = cpu.bus.read(cpu.reg.getSP());
+    cpu.reg.incSP();
+    const u8 high8 = cpu.bus.read(cpu.reg.getSP());
+    cpu.reg.incSP();
+
+    const u16 val = u16(high8 << 8u) | u16(low8);
 
     GEM_DEBUG_POP_STACK(val);
     return val;
@@ -707,7 +717,7 @@ JP_cc('NC', '0xD2', 'C', True)
 JP_cc('C', '0xDA', 'C', False)
 
 Opcode('JP (HL)', '0xE9', 0, 4,
-       'cpu.reg.setPC(cpu.bus.read(cpu.reg.getHL()));', True)
+       'cpu.reg.setPC(cpu.reg.getHL());', True)
 
 helper_functions.append("""\
 void JR_n_impl(gem::CPU& cpu) {
@@ -748,7 +758,7 @@ def CALL_cc_nn(cc, code, flag, reset):
     return Opcode('CALL {}, nn'.format(cc), code, 2, 12, """if ({1}cpu.reg.flags.get{0}()) {{
         call_impl(cpu);
         ticks += 12;
-    }}""".format(flag, '!' if reset else ''), True)
+    }} else {{ (void)cpu.readPC16(); }}""".format(flag, '!' if reset else ''), True)
 
 
 CALL_cc_nn('NZ', '0xC4', 'Z', True)
