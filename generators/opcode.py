@@ -676,8 +676,8 @@ for b in xrange(0, 8):
 def RES(n, code):
     for b in xrange(0, 8):
         code_i = int(code, base=0) + b * 8
-    Opcode('RES {1}, {0}'.format(n, b), '0xCB', 0, 8,
-           'alu::res<{1}>(cpu.reg.get{0}Mut(), cpu);'.format(n, b), False, hex(code_i))
+        Opcode('RES {1}, {0}'.format(n, b), '0xCB', 0, 8,
+               'alu::res<{1}>(cpu.reg.get{0}Mut(), cpu);'.format(n, b), False, hex(code_i))
 
 
 RES('A', '0x87')
