@@ -10,6 +10,9 @@
 #include <vector>
 
 namespace gem {
+
+struct Screen;
+
 struct GPU {
     enum Registers : u16 {
         SCROLLX = 0xFF43,
@@ -43,7 +46,7 @@ struct GPU {
         _1,
     };
 
-    explicit GPU();
+    explicit GPU(Screen& screen);
 
     const u8* vramPtr(const u16 address) const { return vram.data() + address; }
     u8* writableVramPtr(const u16 address) {
@@ -83,18 +86,9 @@ struct GPU {
     };
 
    private:
+    std::reference_wrapper<Screen> screen;
+
     Mem::Block vram;
-
-    struct Screen {
-        static constexpr u8 Width = 160, Height = 144;
-
-        Color& operator()(std::size_t w, std::size_t h) { return data[w][h]; }
-        const Color& operator()(std::size_t w, std::size_t h) const {
-            return data[w][h];
-        }
-
-        std::array<std::array<Color, Height>, Width> data;
-    };
 
     struct Mode;
     struct Mode_Base {
@@ -154,7 +148,7 @@ struct GPU {
     };
 
     Mode mode;
-    u8 currentLine = 0;
+    u8 currentLine = u8(-1);
     u8 lcdc = 0;
     u8 scrollX = 0;
     u8 scrollY = 0;

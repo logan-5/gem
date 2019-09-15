@@ -3,6 +3,7 @@
 #include "gpu.hpp"
 #include "mem.hpp"
 #include "rom.hpp"
+#include "screen.hpp"
 
 #include <iostream>
 
@@ -18,11 +19,17 @@ int main(int argc, const char* argv[]) {
         std::exit(1);
     }
 
-    gem::GPU gpu;
+    gem::Window window;
+    gem::Screen screen;
+    gem::GPU gpu{screen};
     gem::Mem mem{*std::move(rom), gpu};
     gem::CPU cpu{mem};
-    while (true) {
+    cpu.reg.setAF(0x1180);
+    cpu.reg.setDE(0xFF56);
+    while (window.isOpen()) {
+        window.processEvents();
         cpu.execute();
         gpu.step(cpu.getDeltaTicks());
+        window.draw(screen);
     }
 }

@@ -2,6 +2,7 @@
 
 #include "bitwise.hpp"
 #include "mem.hpp"
+#include "screen.hpp"
 
 #include <array>
 #include <optional>
@@ -84,8 +85,9 @@ void GPU::invalidateTileCacheForAddress(u16 address) {
     cachedTiles[address] = std::nullopt;
 }
 
-GPU::GPU()
+GPU::GPU(Screen& screen)
     : spriteData{Mem::makeBlock<0xFE00, 0xFE9F>()}
+    , screen{screen}
     , vram{Mem::makeBlock<0x8000, 0x9FFF>()}
     , cachedTiles((TileSet0End - TileSet1Start) / Tile::MemSize, std::nullopt) {
 }
@@ -129,7 +131,6 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
     GEM_ASSERT(gpu.currentLine == 153);
     gpu.currentLine = 0;
-    std::cout << "\n\n\n\n\n\n\n";
     return Mode_ScanlineOAM{};
 }
 
@@ -217,7 +218,7 @@ u16 getTileAddress(const GPU::TileSet set, const u8 value) {
 u16 getTileMapIndex(const u16 offsetX, const u16 offsetY, const u16 mapStart) {
     const u16 col = offsetX / GPU::Tile::Width;
     const u16 row = offsetY / GPU::Tile::Height;
-    const u16 idx = col + row * GPU::Tile::Width;
+    const u16 idx = col + row * 32;
     return mapStart + idx;
 }
 
@@ -238,6 +239,19 @@ void dumpColor(const GPU::ColorCode c) {
     }
 }
 
+std::array<u8, 4> pixelFromColorCode(const GPU::ColorCode cc) {
+    switch (cc) {
+        case GPU::ColorCode::C00:
+            return {{0x00, 0x00, 0x00, 0xFF}};
+        case GPU::ColorCode::C10:
+            return {{0xFF, 0x00, 0x00, 0xFF}};
+        case GPU::ColorCode::C01:
+            return {{0x00, 0xFF, 0x00, 0xFF}};
+        case GPU::ColorCode::C11:
+            return {{0x00, 0x00, 0xFF, 0xFF}};
+    }
+}
+
 }  // namespace
 
 void GPU::renderScanLine() {
@@ -247,6 +261,8 @@ void GPU::renderScanLine() {
     const u16 mapStart = getMapStart(tileMap);
 
     const u16 yOffset = this->scrollY + this->currentLine;
+
+    std::array<u8, Screen::Width * 4> line;
 
     for (u16 i = 0; i < Screen::Width; ++i) {
         const u16 xOffset = i + this->scrollX;
@@ -261,11 +277,14 @@ void GPU::renderScanLine() {
         }
         const u16 pixelColumn = xOffset % GPU::Tile::Width;
         const u16 pixelRow = yOffset % GPU::Tile::Height;
-        const ColorCode pixel =
+
+        const ColorCode pixelCC =
               tile->pixels[pixelColumn + pixelRow * GPU::Tile::Width];
-        dumpColor(pixel);
+        const auto pixel = pixelFromColorCode(pixelCC);
+
+        std::copy_n(pixel.begin(), pixel.size(), line.begin() + i * 4u);
     }
-    std::cout << '\n';
+    this->screen.get().renderLine(line, yOffset);
 }
 
 }  // namespace gem

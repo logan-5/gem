@@ -64,15 +64,23 @@ SET_SRC_HPP_CPP(gpu)
 SET_SRC_HPP_CPP(mem)
 SET_SRC_HPP_CPP(opcode)
 SET_SRC_HPP_CPP(rom)
+SET_SRC_HPP_CPP(screen)
 
 SET_SRC_HPP(fwd)
 
 SET_SRC_FILE(main)
+
+## If you want to link SFML statically
+# set(SFML_STATIC_LIBRARIES TRUE)
+
+find_package(SFML 2.5 COMPONENTS graphics window REQUIRED)
 
 set(INCLUDE_DIRS ${INCLUDE_DIRS} ${SRC_DIR})
 set(INCLUDE_DIRS ${INCLUDE_DIRS} ${GENERATED_DIR})
 include_directories(${PROJECT_NAME} ${INCLUDE_DIRS})
 
 add_executable(${PROJECT_NAME} ${SRC})
+
+target_link_libraries(${PROJECT_NAME} sfml-graphics sfml-window)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
