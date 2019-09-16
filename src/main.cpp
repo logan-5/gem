@@ -20,16 +20,13 @@ int main(int argc, const char* argv[]) {
     }
 
     gem::Window window;
-    gem::Screen screen;
+    gem::Screen screen{window};
     gem::GPU gpu{screen};
     gem::Mem mem{*std::move(rom), gpu};
     gem::CPU cpu{mem};
-    cpu.reg.setAF(0x1180);
-    cpu.reg.setDE(0xFF56);
     while (window.isOpen()) {
         window.processEvents();
         cpu.execute();
         gpu.step(cpu.getDeltaTicks());
-        window.draw(screen);
     }
 }

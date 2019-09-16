@@ -126,6 +126,7 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
     }
 }
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
+    gpu.screen.get().vblank();
     GEM_ASSERT(gpu.currentLine == 153);
     gpu.currentLine = 0;
     return Mode_ScanlineOAM{};

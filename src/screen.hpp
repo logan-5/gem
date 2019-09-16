@@ -4,8 +4,11 @@
 #include "fwd.hpp"
 
 #include <memory>
+#include <utility>
 
 namespace gem {
+
+struct Window;
 
 struct Screen {
    public:
@@ -13,7 +16,7 @@ struct Screen {
 
     static constexpr unsigned Width = 160, Height = 144;
 
-    explicit Screen();
+    explicit Screen(Window& window);
 
     ~Screen();
 
@@ -21,7 +24,10 @@ struct Screen {
 
     void renderLine(const std::array<u8, Width * 4>& line, const unsigned y);
 
+    void vblank();
+
    private:
+    std::reference_wrapper<Window> window;
     std::unique_ptr<Impl> impl;
 };
 

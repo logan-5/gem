@@ -32,12 +32,17 @@ struct Screen::Impl {
     sf::Sprite screenSprite;
 };
 
-Screen::Screen() : impl{std::make_unique<Impl>()} {}
+Screen::Screen(Window& window)
+    : window{window}, impl{std::make_unique<Impl>()} {}
 Screen::~Screen() = default;
 
 void Screen::renderLine(const std::array<u8, Width * 4>& line,
                         const unsigned y) {
     impl->renderLine(line, y);
+}
+
+void Screen::vblank() {
+    window.get().draw(*this);
 }
 
 struct Window::Impl {
