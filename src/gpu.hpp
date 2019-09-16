@@ -65,7 +65,19 @@ struct GPU {
     void step(DeltaTicks deltaTicks);
 
     struct Color {
-        u8 a, r, g, b;
+       public:
+        constexpr Color(u8 a, u8 r, u8 g, u8 b) : storage{{r, g, b, a}} {}
+
+        constexpr auto begin() noexcept { return storage.begin(); }
+        constexpr auto begin() const noexcept { return storage.begin(); }
+        constexpr auto cbegin() const noexcept { return storage.begin(); }
+
+        static constexpr auto size() noexcept {
+            return std::tuple_size_v<decltype(storage)>;
+        }
+
+       private:
+        std::array<u8, 4> storage;
     };
 
     enum ColorCode : u8 {

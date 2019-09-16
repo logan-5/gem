@@ -11,7 +11,7 @@ struct Screen::Impl {
         std::array<u8, Screen::Width * Screen::Height * 4> texData;
         for (std::size_t i = 0; i < Screen::Width * Screen::Height; ++i) {
             texData[0u + i * 4u] = 0xFF;
-            texData[1u + i * 4u] = 0xFF;
+            texData[1u + i * 4u] = 0x00;
             texData[2u + i * 4u] = 0xFF;
             texData[3u + i * 4u] = 0xFF;
         }

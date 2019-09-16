@@ -12,16 +12,14 @@
 namespace gem {
 using Color = GPU::Color;
 constexpr Color operator""_argb(unsigned long long u) {
-    const u8 a = u8(u & 0xFF000000 >> 6u);
-    const u8 r = u8(u & 0x00FF0000 >> 4u);
-    const u8 g = u8(u & 0x0000FF00 >> 2u);
-    const u8 b = u8(u & 0x000000FF >> 0u);
+    const u8 a = u8((u & 0xFF000000) >> (6u * 4u));
+    const u8 r = u8((u & 0x00FF0000) >> (4u * 4u));
+    const u8 g = u8((u & 0x0000FF00) >> (2u * 4u));
+    const u8 b = u8((u & 0x000000FF) >> (0u * 4u));
     return Color{a, r, g, b};
 }
 
 namespace {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-const-variable"
 // 0xAARRGGBB
 namespace Colors {
 constexpr auto Black = 0xFF000000_argb;
@@ -29,7 +27,6 @@ constexpr auto DarkGray = 0xFF555555_argb;
 constexpr auto LightGray = 0xFFAAAAAA_argb;
 constexpr auto White = 0xFFFFFFFF_argb;
 };  // namespace Colors
-#pragma clang diagnostic pop
 }  // namespace
 
 GPU::Tile::Tile(const u8* const data) {
@@ -239,16 +236,16 @@ void dumpColor(const GPU::ColorCode c) {
     }
 }
 
-std::array<u8, 4> pixelFromColorCode(const GPU::ColorCode cc) {
+Color pixelFromColorCode(const GPU::ColorCode cc) {
     switch (cc) {
         case GPU::ColorCode::C00:
-            return {{0x00, 0x00, 0x00, 0xFF}};
+            return Colors::White;
         case GPU::ColorCode::C10:
-            return {{0xFF, 0x00, 0x00, 0xFF}};
+            return Colors::DarkGray;
         case GPU::ColorCode::C01:
-            return {{0x00, 0xFF, 0x00, 0xFF}};
+            return Colors::LightGray;
         case GPU::ColorCode::C11:
-            return {{0x00, 0x00, 0xFF, 0xFF}};
+            return Colors::Black;
     }
 }
 
