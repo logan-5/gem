@@ -167,42 +167,32 @@ inline void dec(u8& operand, CPU& cpu) {
     return u16(result);
 }
 
-[[nodiscard]] inline u16 add16Signed(u16 lhs, u16 rhs, CPU& cpu) {
-    const i32 lhs_signed{lhs};
-    u32 rhs32 = u32{rhs};
-    i32 rhs_signed;
-    std::memcpy(&rhs_signed, &rhs32, sizeof rhs_signed);
+[[nodiscard]] inline u16 add16Signed8(u16 lhs, u8 rhs, CPU& cpu) {
+    i8 signed_rhs;
+    std::memcpy(&signed_rhs, &rhs, sizeof signed_rhs);
+    const u16 result = u16(lhs + signed_rhs);
 
-    const i32 result = lhs_signed + rhs_signed;
-    const u32 noCarry = lhs ^ rhs;
-    u32 unsignedResult;
-    std::memcpy(&unsignedResult, &result, sizeof unsignedResult);
-    const u32 carryResult = noCarry ^ unsignedResult;
-
-    const auto carry = carryResult & (1u << 31);
-    const auto halfC = carryResult & 0b0'0001'0000'0000'0000;
+    // this instruction sets flags weirdly, based on adding _unsigned_ rhs
+    // http://forums.nesdev.com/viewtopic.php?p=42138
+    const u16 lhs8 = lhs & 0xFF;
+    const u16 unsignedResult = lhs8 + u16(rhs);
+    const u16 noCarry = lhs8 ^ u16(rhs);
+    const u16 carryResult = unsignedResult ^ noCarry;
+    const bool carry = carryResult & 0b1'0000'0000;
+    const bool halfC = carryResult & 0b0'0001'0000;
 
     cpu.reg.flags.resetZ();
     cpu.reg.flags.resetN();
-    if (rhs_signed < 0) {
-        carry ? cpu.reg.flags.resetC() : cpu.reg.flags.setC();
-        halfC ? cpu.reg.flags.resetH() : cpu.reg.flags.setH();
-    } else {
-        carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
-        halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
-    }
+    carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
+    halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
 
-    return u16(result);
-}
-
-[[nodiscard]] inline u16 add16Signed8(u16 lhs, u8 rhs, CPU& cpu) {
-    return add16Signed(lhs, u16(rhs), cpu);
+    return result;
 }
 
 inline void decimalAdjust(u8& operand, CPU& cpu) {
     (void)operand;
     (void)cpu;
-    throw;
+    GEM_ASSERT(false);
 }
 
 inline void complement(u8& operand, CPU& cpu) {
