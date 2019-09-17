@@ -8,6 +8,8 @@
 #include <iostream>
 
 int main(int argc, const char* argv[]) {
+    std::ios::sync_with_stdio(false);
+
     if (argc != 2) {
         std::exit(1);
     }
