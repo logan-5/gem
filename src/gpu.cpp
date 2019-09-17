@@ -200,7 +200,8 @@ u16 getTileNumber(const GPU::TileSet set, const u8 value) {
         case GPU::TileSet::_1: {
             i8 signedValue;
             std::memcpy(&signedValue, &value, sizeof signedValue);
-            return value + u16(255 + signedValue);
+            const u16 ret = u16(255 + signedValue);
+            return ret;
         }
     }
     GEM_UNREACHABLE();
