@@ -9,56 +9,96 @@ namespace gem {
 namespace alu {
 
 namespace detail {
-inline void add8_impl(u8& lhs, u16 rhs, CPU& cpu) {
-    // very helpful:
-    // https://stackoverflow.com/questions/42091214/gbz80-adc-instructions-fail-test
-    const u16 sum = u16(lhs) + rhs;
-    const u16 noCarrySum = u16(lhs) ^ rhs;
+[[nodiscard]] constexpr inline u16 addIntermediate(const u16 lhs,
+                                                   const u16 rhs,
+                                                   bool& carry,
+                                                   bool& halfC) {
+    const u16 sum = lhs + rhs;
+    const u16 noCarrySum = lhs ^ rhs;
     const u16 carryResult = noCarrySum ^ sum;
 
-    const bool carry = carryResult & 0b1'0000'0000;
-    const bool halfC = carryResult & 0b0'0001'0000;
+    carry = carry || (carryResult & 0b1'0000'0000);
+    halfC = halfC || (carryResult & 0b0'0001'0000);
 
-    (sum & 0xff) == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    return sum;
+}
+inline void setAddFlags(const u8 result,
+                        const bool carry,
+                        const bool halfC,
+                        CPU& cpu) {
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
     cpu.reg.flags.resetN();
     carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
     halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
-
-    lhs = u8(sum);
 }
 }  // namespace detail
 
 inline void add8(u8& lhs, u8 rhs, CPU& cpu) {
-    detail::add8_impl(lhs, rhs, cpu);
+    bool carry = false, halfC = false;
+    const u16 sum = detail::addIntermediate(lhs, rhs, carry, halfC);
+
+    const u8 ret = u8(sum & 0xFF);
+    detail::setAddFlags(ret, carry, halfC, cpu);
+
+    lhs = ret;
 }
 
 inline void adc8(u8& lhs, u8 rhs, CPU& cpu) {
-    detail::add8_impl(lhs, u16(rhs) + cpu.reg.flags.getC(), cpu);
+    bool carry = false, halfC = false;
+    const u16 rhs16 = detail::addIntermediate(
+          rhs, cpu.reg.flags.getC() ? 1u : 0u, carry, halfC);
+    const u16 ret16 = detail::addIntermediate(u16(lhs), rhs16, carry, halfC);
+
+    const u8 ret = u8(ret16 & 0xFF);
+    detail::setAddFlags(ret, carry, halfC, cpu);
+
+    lhs = ret;
 }
 
 namespace detail {
-inline void sub8_impl(u8& lhs, u16 rhs, CPU& cpu) {
-    const u16 diff = u16(lhs) - rhs;
+[[nodiscard]] constexpr inline u16 subIntermediate(const u16 lhs,
+                                                   const u16 rhs,
+                                                   bool& carry,
+                                                   bool& halfC) {
+    const u16 diff = lhs - rhs;
     const u16 noCarryDiff = lhs ^ rhs;
     const u16 carryResult = noCarryDiff ^ diff;
 
-    const bool carry = carryResult & (1 << 15);
-    const bool halfC = carryResult & 0b0001'0000;
+    carry = carry || carryResult & (1 << 15);
+    halfC = halfC || carryResult & 0b0001'0000;
 
-    (diff & 0xff) == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    return diff;
+}
+inline void setSubFlags(const u8 result,
+                        const bool carry,
+                        const bool halfC,
+                        CPU& cpu) {
+    result == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
     cpu.reg.flags.setN();
     carry ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
     halfC ? cpu.reg.flags.setH() : cpu.reg.flags.resetH();
-
-    lhs = u8(diff);
 }
 }  // namespace detail
 
 inline void sub8(u8& lhs, u8 rhs, CPU& cpu) {
-    detail::sub8_impl(lhs, rhs, cpu);
+    bool carry = false, halfC = false;
+    const u16 diff = detail::subIntermediate(lhs, rhs, carry, halfC);
+
+    const u8 ret = u8(diff & 0xff);
+    detail::setSubFlags(ret, carry, halfC, cpu);
+
+    lhs = ret;
 }
 inline void sbc8(u8& lhs, u8 rhs, CPU& cpu) {
-    detail::sub8_impl(lhs, u16(rhs) + cpu.reg.flags.getC(), cpu);
+    bool carry = false, halfC = false;
+    const u16 rhs16 = detail::addIntermediate(
+          rhs, cpu.reg.flags.getC() ? 1u : 0u, carry, halfC);
+    const u16 diff = detail::subIntermediate(u16(lhs), rhs16, carry, halfC);
+
+    const u8 ret = u8(diff & 0xff);
+    detail::setSubFlags(ret, carry, halfC, cpu);
+
+    lhs = ret;
 }
 
 inline void and_(u8& lhs, u8 rhs, CPU& cpu) {

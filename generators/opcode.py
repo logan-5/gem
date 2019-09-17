@@ -544,7 +544,7 @@ Opcode('RL (HL)', '0xCB', 0, 16, """u8 tmp = cpu.bus.read(cpu.reg.getHL());
     alu::rl<true>(tmp, cpu);
     cpu.bus.write(cpu.reg.getHL(), tmp);""", False, '0x16')
 
-Opcode('RRCA', '0x0F', 0, 4, 'alu::rr<false>(cpu.reg.getAMut(), cpu);', False)
+Opcode('RRCA', '0x0F', 0, 4, 'alu::rrc<false>(cpu.reg.getAMut(), cpu);', False)
 Opcode('RRA', '0x1F', 0, 4, 'alu::rr<false>(cpu.reg.getAMut(), cpu);', False)
 
 
