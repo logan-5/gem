@@ -46,20 +46,33 @@ const char* getOpcodeDescription(const gem::u8 code, const gem::CPU& cpu) {{
     UNIMPLEMENTED_OPCODE(code);
 }}
 }}
+
+namespace {{ bool verbosePrintState = false; }}
+void gem::op::enableVerbosePrinting() {{
+    ::verbosePrintState = true;
+}}
+void gem::op::disableVerbosePrinting() {{
+    ::verbosePrintState = false;
+}}
+namespace {{ bool verbosePrint() {{ return ::verbosePrintState; }} }}
+#else
+namespace {{ constexpr bool verbosePrint() {{ return false; }} }}
 #endif
 
 gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
-    GEM_DEBUG_LOG("running opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(cpu.reg.getPC()-1)
-        << "\\n\\tAF: " << hexString(cpu.reg.getAF())
-        << "\\n\\tBC: " << hexString(cpu.reg.getBC())
-        << "\\n\\tDE: " << hexString(cpu.reg.getDE())
-        << "\\n\\tHL: " << hexString(cpu.reg.getHL())
-        << "\\n\\tSP: " << hexString(cpu.reg.getSP())
-        << "\\n\\tPC: " << hexString(cpu.reg.getPC()-1)
-            << "\\n\\tZ: " << cpu.reg.flags.getZ() 
-            << ", N: " << cpu.reg.flags.getN() 
-            << ", H: " << cpu.reg.flags.getH() 
-            << ", C: " << cpu.reg.flags.getC());
+    if (verbosePrint()) {{
+        GEM_DEBUG_LOG("running opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(cpu.reg.getPC()-1)
+            << "\\n    AF: " << hexString(cpu.reg.getAF())
+            << "\\n    BC: " << hexString(cpu.reg.getBC())
+            << "\\n    DE: " << hexString(cpu.reg.getDE())
+            << "\\n    HL: " << hexString(cpu.reg.getHL())
+            << "\\n    SP: " << hexString(cpu.reg.getSP())
+            << "\\n    PC: " << hexString(cpu.reg.getPC()-1)
+                << "\\n    Z: " << cpu.reg.flags.getZ() 
+                << ", N: " << cpu.reg.flags.getN() 
+                << ", H: " << cpu.reg.flags.getH() 
+                << ", C: " << cpu.reg.flags.getC());
+    }}
     switch (opcode) {{
         {runners}
     }}
@@ -111,7 +124,7 @@ def make_getters(ops, two_byte_prefixes):
 
     def make_one_byte_getter(op):
         return 'case {val}: {{ return "\\"{name}\\" ({val})"; }}'.format(val=op.val, name=op.name)
-    one_byte_getters = '\n\t\t'.join(
+    one_byte_getters = ('\n' + ' '*8).join(
         make_one_byte_getter(op) for op in one_byte_ops)
 
     def make_two_byte_getter(item):
@@ -124,11 +137,11 @@ def make_getters(ops, two_byte_prefixes):
         }}"""
         cases = ['case {val}: {{ return "\\"{name}\\" ({val})"; }}'.format(val=op.second_byte, name=op.name) for op in sorted(
             item[1], key=lambda op: int(op.second_byte, base=0))]
-        return switch_skeleton.format(prefix=item[0], cases='\n\t\t\t\t'.join(cases))
-    two_byte_getters = '\n\t\t'.join(make_two_byte_getter(item)
-                                     for item in two_byte_ops.items())
+        return switch_skeleton.format(prefix=item[0], cases=('\n' + ' '*16).join(cases))
+    two_byte_getters = ('\n' + ' '*8).join(make_two_byte_getter(item)
+                                           for item in two_byte_ops.items())
 
-    return '{}\n\t\t{}'.format(one_byte_getters, two_byte_getters)
+    return '{one}\n{ws}{two}'.format(one=one_byte_getters, ws=' '*8, two=two_byte_getters)
 
 
 def make_runners(ops, two_byte_prefixes):
@@ -136,7 +149,7 @@ def make_runners(ops, two_byte_prefixes):
 
     def make_one_byte_runner(op):
         return 'case {val}: {{ return ::run_{name}(cpu); }}'.format(val=op.val, name=sanitize_name(op.name))
-    one_byte_runners = '\n\t\t'.join(
+    one_byte_runners = ('\n' + ' '*8).join(
         make_one_byte_runner(op) for op in one_byte_ops)
 
     def make_two_byte_runner(item):
@@ -149,11 +162,11 @@ def make_runners(ops, two_byte_prefixes):
         }}"""
         cases = ['case {val}: {{ return ::run_{name}(cpu); }}'.format(val=op.second_byte, name=sanitize_name(op.name)) for op in sorted(
             item[1], key=lambda op: int(op.second_byte, base=0))]
-        return switch_skeleton.format(prefix=item[0], cases='\n\t\t\t\t'.join(cases))
-    two_byte_runners = '\n\t\t'.join(make_two_byte_runner(item)
-                                     for item in two_byte_ops.items())
+        return switch_skeleton.format(prefix=item[0], cases=('\n' + ' '*16).join(cases))
+    two_byte_runners = ('\n' + ' '*8).join(make_two_byte_runner(item)
+                                           for item in two_byte_ops.items())
 
-    return '{}\n\t\t{}'.format(one_byte_runners, two_byte_runners)
+    return '{one}\n{ws}{two}'.format(one=one_byte_runners, ws=' '*8, two=two_byte_runners)
 
 
 def main():

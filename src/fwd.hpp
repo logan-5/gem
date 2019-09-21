@@ -32,7 +32,7 @@
 #define GEM_LOG(...) GEM_LOG_EXACTLY(__VA_ARGS__ << '\n')
 
 #ifndef NDEBUG
-#define GEM_DEBUG_LOGGING false
+#define GEM_DEBUG_LOGGING true
 #endif
 
 #if GEM_DEBUG_LOGGING
