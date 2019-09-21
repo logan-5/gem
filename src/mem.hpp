@@ -35,13 +35,13 @@ struct Mem {
     friend struct GetPtr;
     u8* mut_ptr(u16 address);
 
+    Block zeroPage;
     Block ROM;
     Block bootstrap;
     GPU& gpu;
     IO& io;
     Block externalRam;
     Block workingRam;
-    Block zeroPage;
 };
 
 }  // namespace gem

@@ -46,36 +46,8 @@ GPU::Tile::Tile(const u8* const data) {
     }
 }
 
-#ifndef NDEBUG
-void GPU::Tile::dump() const {
-    return;
-    for (std::size_t i = 0; i < Width; ++i) {
-        for (std::size_t j = 0; j < Height; ++j) {
-            switch (this->pixels[i + 8 * j]) {
-                case ColorCode::C00:
-                    std::cout << ' ';
-                    break;
-                case ColorCode::C10:
-                    std::cout << '#';
-                    break;
-                case ColorCode::C01:
-                    std::cout << '*';
-                    break;
-                case ColorCode::C11:
-                    std::cout << '&';
-                    break;
-            }
-        }
-        std::cout << '\n';
-    }
-}
-#endif
-
 GPU::CachedTile GPU::loadCachedTile(u16 address) const {
     const auto tile = CachedTile{vramPtr(address)};
-#ifndef NDEBUG
-    tile.dump();
-#endif
     return tile;
 }
 
@@ -168,14 +140,14 @@ namespace {
 template <typename A>
 decltype(auto) index(A&& a, std::size_t idx) {
 #ifndef NDEBUG
-    return a.at(idx);
+    return std::forward<A>(a).at(idx);
 #else
-    return a[idx];
+    return std::forward<A>(a)[idx];
 #endif
 }
 
 #ifndef NDEBUG
-#define GEM_LOG_TILE_SET_MAP_CHANGES false
+#define GEM_LOG_TILE_SET_MAP_CHANGES true
 #endif
 
 GPU::TileSet getTileSet(const u8 lcdc) {
@@ -245,23 +217,6 @@ u16 getTileMapIndex(const u16 offsetX, const u16 offsetY, const u16 mapStart) {
     const u16 row = offsetY / GPU::Tile::Height;
     const u16 idx = col + row * 32;
     return mapStart + idx;
-}
-
-void dumpColor(const GPU::ColorCode c) {
-    switch (c) {
-        case GPU::ColorCode::C00:
-            std::cout << ' ';
-            break;
-        case GPU::ColorCode::C10:
-            std::cout << '#';
-            break;
-        case GPU::ColorCode::C01:
-            std::cout << '*';
-            break;
-        case GPU::ColorCode::C11:
-            std::cout << '&';
-            break;
-    }
 }
 
 Color pixelFromColorCode(const GPU::ColorCode cc) {
@@ -354,7 +309,7 @@ void GPU::dumpTileMemory() {
         if (((i + 1) % (imageWidth * bytesPerPixel)) == 0) {
             img += '\n';
         } else {
-            img += " ";
+            img += ' ';
         }
     }
 

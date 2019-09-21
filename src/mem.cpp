@@ -15,13 +15,13 @@ std::array<gem::u8, 2> garbage{0x00, 0x00};
 namespace gem {
 
 Mem::Mem(Block rom, GPU& gpu, IO& io)
-    : ROM(makeBlock<0x00, 0x3FFF>(std::move(rom)))
+    : zeroPage(makeBlock<0xFF80, 0xFFFF>())
+    , ROM(makeBlock<0x00, 0x3FFF>(std::move(rom)))
     , bootstrap(::gem::loadBootstrapROM())
     , gpu{gpu}
     , io{io}
     , externalRam(makeBlock<0xA000, 0xBFFF>())
-    , workingRam(makeBlock<0xC000, 0xDFFF>())
-    , zeroPage(makeBlock<0xFF80, 0xFFFF>()) {}
+    , workingRam(makeBlock<0xC000, 0xDFFF>()) {}
 
 u8 Mem::read(u16 address) const {
     return *ptr(address);
