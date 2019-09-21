@@ -27,7 +27,6 @@ int main(int argc, const char* argv[]) {
     gem::Mem mem{*std::move(rom), gpu};
     gem::CPU cpu{mem};
     while (window.isOpen()) {
-        window.processEvents();
         cpu.execute();
         gpu.step(cpu.getDeltaTicks());
     }

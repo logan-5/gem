@@ -48,7 +48,10 @@ void Screen::vblank() {
 struct Window::Impl {
     explicit Impl()
         : window{sf::VideoMode{Screen::Width * Scale, Screen::Height * Scale},
-                 "gem"} {}
+                 "gem"} {
+        window.setFramerateLimit(20);
+        window.setVerticalSyncEnabled(true);
+    }
 
     bool isOpen() const { return window.isOpen(); }
     void processEvents() {
@@ -63,6 +66,7 @@ struct Window::Impl {
         window.clear();
         window.draw(screen.getImpl().screenSprite);
         window.display();
+        processEvents();
     }
 
     sf::RenderWindow window;

@@ -1,12 +1,14 @@
 #include "gpu.hpp"
 
 #include "bitwise.hpp"
+#include "fs.hpp"
 #include "mem.hpp"
 #include "screen.hpp"
 
 #include <array>
 #include <optional>
 
+#include <fstream>
 #include <iostream>
 
 namespace gem {
@@ -107,7 +109,7 @@ void GPU::step(DeltaTicks deltaTicks) {
 
 GPU::Mode GPU::Mode_HBlank::nextMode(GPU& gpu) {
     ++gpu.currentLine;
-    if (gpu.currentLine == Screen::Height - 1) {
+    if (gpu.currentLine == Screen::Height) {
         return Mode_VBlank{};
     }
     return Mode_ScanlineOAM{};
@@ -122,12 +124,12 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
     while (stepTimer < lines) {
         ++stepTimer;
         ++gpu.currentLine;
-        GEM_ASSERT(gpu.currentLine <= 153);
+        GEM_ASSERT(gpu.currentLine <= 154);
     }
 }
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
     gpu.screen.get().vblank();
-    GEM_ASSERT(gpu.currentLine == 153);
+    GEM_ASSERT(gpu.currentLine == 154);
     gpu.currentLine = 0;
     return Mode_ScanlineOAM{};
 }
@@ -172,12 +174,36 @@ decltype(auto) index(A&& a, std::size_t idx) {
 #endif
 }
 
+#ifndef NDEBUG
+#define GEM_LOG_TILE_SET_MAP_CHANGES true
+#endif
+
 GPU::TileSet getTileSet(const u8 lcdc) {
-    return bitwise::test<4>(lcdc) ? GPU::TileSet::_1 : GPU::TileSet::_0;
+    const GPU::TileSet tileSet =
+          bitwise::test<4>(lcdc) ? GPU::TileSet::_0 : GPU::TileSet::_1;
+#if GEM_LOG_TILE_SET_MAP_CHANGES
+    static std::optional<GPU::TileSet> prevTileSet;
+    if (std::exchange(prevTileSet, tileSet) != tileSet) {
+        GEM_LOG("tile set changed to : "
+                << (tileSet == GPU::TileSet::_0 ? "0" : "1"));
+    }
+#endif
+    return tileSet;
 }
 GPU::TileMap getTileMap(const u8 lcdc) {
-    return bitwise::test<3>(lcdc) ? GPU::TileMap::_1 : GPU::TileMap::_0;
+    const GPU::TileMap tileMap =
+          bitwise::test<3>(lcdc) ? GPU::TileMap::_1 : GPU::TileMap::_0;
+#if GEM_LOG_TILE_SET_MAP_CHANGES
+    static std::optional<GPU::TileMap> prevTileMap;
+    if (std::exchange(prevTileMap, tileMap) != tileMap) {
+        GEM_LOG("tile map changed to : "
+                << (tileMap == GPU::TileMap::_0 ? "0" : "1"));
+    }
+#endif
+    return tileMap;
 }
+
+#undef GEM_LONG_TILE_SET_MAP_CHANGES
 
 u16 getMapStart(const GPU::TileMap map) {
     const u16 start = [&] {
@@ -195,9 +221,9 @@ u16 getMapStart(const GPU::TileMap map) {
 
 u16 getTileNumber(const GPU::TileSet set, const u8 value) {
     switch (set) {
-        case GPU::TileSet::_0:
+        case GPU::TileSet::_1:
             return value;
-        case GPU::TileSet::_1: {
+        case GPU::TileSet::_0: {
             i8 signedValue;
             std::memcpy(&signedValue, &value, sizeof signedValue);
             const u16 ret = u16(255 + signedValue);
@@ -284,6 +310,57 @@ void GPU::renderScanLine() {
         std::copy_n(pixel.begin(), pixel.size(), line.begin() + i * 4u);
     }
     this->screen.get().renderLine(line, yOffset);
+}
+
+void GPU::dumpTileMemory() {
+    constexpr u16 totalTiles = 384;
+    constexpr u16 tilesPerRow = 24;
+    constexpr u16 tilesPerColumn = 16;
+    static_assert(tilesPerRow * tilesPerColumn == totalTiles);
+    constexpr std::size_t imageWidth = tilesPerRow * Tile::Width;
+    constexpr std::size_t imageHeight = tilesPerColumn * Tile::Height;
+    constexpr std::size_t bytesPerPixel = 3;
+    std::string img = "P3\n" + std::to_string(imageWidth) + ' ' +
+                      std::to_string(imageHeight) + "\n255\n";
+    std::array<u8, imageWidth* imageHeight* bytesPerPixel> data = {};
+
+    for (u16 tileNumber = 0; tileNumber < totalTiles; ++tileNumber) {
+        const u16 tileAddress = tileNumber * Tile::MemSize;
+        std::optional<Tile>& tile = index(cachedTiles, tileNumber);
+        if (!tile) {
+            tile = loadCachedTile(tileAddress);
+        }
+
+        for (unsigned r = 0; r < Tile::Height; ++r) {
+            for (unsigned c = 0; c < Tile::Width; ++c) {
+                const std::size_t column =
+                      c + (tileNumber % tilesPerRow) * Tile::Width;
+                const std::size_t row =
+                      r + (tileNumber / tilesPerRow) * Tile::Height;
+                const std::size_t index =
+                      (column + row * imageWidth) * bytesPerPixel;
+
+                const ColorCode pixelCC =
+                      tile->pixels[c + r * GPU::Tile::Width];
+                const auto pixel = pixelFromColorCode(pixelCC);
+
+                std::copy_n(pixel.begin(), bytesPerPixel, data.data() + index);
+            }
+        }
+    }
+
+    for (std::size_t i = 0; i < data.size(); ++i) {
+        img += std::to_string(data[i]);
+        if (((i + 1) % (imageWidth * bytesPerPixel)) == 0) {
+            img += '\n';
+        } else {
+            img += " ";
+        }
+    }
+
+    std::ofstream out{fs::AbsolutePath{fs::RelativePath("tileData.ppm")}.path};
+    GEM_ASSERT(out);
+    out << img;
 }
 
 }  // namespace gem

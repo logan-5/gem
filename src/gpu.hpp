@@ -171,6 +171,8 @@ struct GPU {
     std::vector<std::optional<CachedTile>> cachedTiles;
 
     void renderScanLine();
+	
+	void dumpTileMemory();
 };
 }  // namespace gem
 
