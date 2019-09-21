@@ -11,57 +11,51 @@ from gen_common import *
 _GEN_SKELETON = """\
 // THIS FILE IS GENERATED
 
-# include "opcode.hpp"
-# include "alu.hpp"
-# include "cpu.hpp"
+#include "opcode.hpp"
+#include "alu.hpp"
+#include "cpu.hpp"
 
-# ifndef NDEBUG
-# include <cassert>
-# include <iostream>
-# include <iomanip>
-# define UNIMPLEMENTED_OPCODE(WHICH)                                 \\
-    do {{                                                            \\
-        std::cerr << "unimplemented opcode: 0x" << std::setfill('0') \\
-                    << std::setw(2) << std::hex << int(WHICH)        \\
-                    << " at PC 0x" << std::hex << cpu.reg.getPC()    \\
-                    << '\\n';                                        \\
+using gem::hexString;
+
+#ifndef NDEBUG
+#define UNIMPLEMENTED_OPCODE(WHICH)                                  \\
+    do {{                                                             \\
+        std::cerr << "unimplemented opcode: 0x" << hexString(WHICH)  \\
+                    << " at PC 0x" << hexString(cpu.reg.getPC())     \\
+                    << '\\n';                                         \\
         GEM_UNREACHABLE();                                           \\
-    }}                                                               \\
+    }}                                                                \\
     while (false)
-# else
-# define UNIMPLEMENTED_OPCODE(...) GEM_UNREACHABLE()
-# endif
+#else
+#define UNIMPLEMENTED_OPCODE(...) GEM_UNREACHABLE()
+#endif
 
 {globals_}
 
 namespace {{
 {helper_functions}
 {defs}
+}}
 
 #if GEM_DEBUG_LOGGING
-std::ostream& operator<<(std::ostream& ostr, const gem::op::Opcode opcode) {{
-    using namespace gem;
-    ostr << "\\"" << opcode.name << "\\" (0x" << std::hex << int(opcode.val) << ")";
-    return ostr;
-}}
-#endif
-
-}}
-
-gem::Opcode gem::op::getOpcode(const gem::u8 code, const gem::CPU& cpu) {{
+namespace {{
+const char* getOpcodeDescription(const gem::u8 code, const gem::CPU& cpu) {{
     switch (code) {{
         {getters}
     }}
     UNIMPLEMENTED_OPCODE(code);
 }}
+}}
+#endif
+
 gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
-    GEM_DEBUG_LOG("running opcode: " << getOpcode(opcode, cpu) << " at PC: 0x" << std::setfill('0') << std::setw(4) << std::hex << (cpu.reg.getPC()-1)
-        << "\\n\\tAF: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getAF()
-        << "\\n\\tBC: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getBC()
-        << "\\n\\tDE: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getDE()
-        << "\\n\\tHL: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getHL()
-        << "\\n\\tSP: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getSP()
-        << "\\n\\tPC: " << std::setfill('0') << std::setw(4) << std::hex << cpu.reg.getPC()-1
+    GEM_DEBUG_LOG("running opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(cpu.reg.getPC()-1)
+        << "\\n\\tAF: " << hexString(cpu.reg.getAF())
+        << "\\n\\tBC: " << hexString(cpu.reg.getBC())
+        << "\\n\\tDE: " << hexString(cpu.reg.getDE())
+        << "\\n\\tHL: " << hexString(cpu.reg.getHL())
+        << "\\n\\tSP: " << hexString(cpu.reg.getSP())
+        << "\\n\\tPC: " << hexString(cpu.reg.getPC()-1)
             << "\\n\\tZ: " << cpu.reg.flags.getZ() 
             << ", N: " << cpu.reg.flags.getN() 
             << ", H: " << cpu.reg.flags.getH() 
@@ -87,8 +81,7 @@ def sanitize_name(op_name):
 
 def make_defs(ops):
     def make_def(op):
-        return """constexpr gem::op::Opcode {sname}{{{val}, {op_count}, {ticks}, "{name}"}};
-inline gem::DeltaTicks run_{sname}(gem::CPU& cpu) {{
+        return """inline gem::DeltaTicks run_{sname}(gem::CPU& cpu) {{
     (void)cpu;
     using namespace gem;
     DeltaTicks ticks = 0;
@@ -117,19 +110,19 @@ def make_getters(ops, two_byte_prefixes):
     one_byte_ops, two_byte_ops = partition_two_byte_ops(ops, two_byte_prefixes)
 
     def make_one_byte_getter(op):
-        return 'case {val}: {{ return ::{name}; }}'.format(val=op.val, name=sanitize_name(op.name))
+        return 'case {val}: {{ return "\\"{name}\\" ({val})"; }}'.format(val=op.val, name=op.name)
     one_byte_getters = '\n\t\t'.join(
         make_one_byte_getter(op) for op in one_byte_ops)
 
     def make_two_byte_getter(item):
         switch_skeleton = """case {prefix}: {{
-            const u8 secondByte = cpu.peekPC(); // do NOT increment PC
+            const gem::u8 secondByte = cpu.peekPC(); // do NOT increment PC
             switch (secondByte) {{
                 {cases}
             }}
             UNIMPLEMENTED_OPCODE(({prefix} << 8) | secondByte);
         }}"""
-        cases = ['case {val}: {{ return ::{name}; }}'.format(val=op.second_byte, name=sanitize_name(op.name)) for op in sorted(
+        cases = ['case {val}: {{ return "\\"{name}\\" ({val})"; }}'.format(val=op.second_byte, name=op.name) for op in sorted(
             item[1], key=lambda op: int(op.second_byte, base=0))]
         return switch_skeleton.format(prefix=item[0], cases='\n\t\t\t\t'.join(cases))
     two_byte_getters = '\n\t\t'.join(make_two_byte_getter(item)

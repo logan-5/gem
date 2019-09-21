@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 project(gem)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PythonInterp 2.7 REQUIRED)
 
