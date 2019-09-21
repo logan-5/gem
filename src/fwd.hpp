@@ -23,10 +23,12 @@
 #define GEM_UNREACHABLE() __builtin_unreachable()
 #endif
 
-#define GEM_LOG(...)                      \
-    do {                                  \
-        std::cerr << __VA_ARGS__ << '\n'; \
+#include <iostream>
+#define GEM_LOG_EXACTLY(...)      \
+    do {                          \
+        std::cerr << __VA_ARGS__; \
     } while (false)
+#define GEM_LOG(...) GEM_LOG_EXACTLY(__VA_ARGS__ << '\n')
 
 #ifndef NDEBUG
 // #define GEM_DEBUG_LOGGING true

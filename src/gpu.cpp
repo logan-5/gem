@@ -175,7 +175,7 @@ decltype(auto) index(A&& a, std::size_t idx) {
 }
 
 #ifndef NDEBUG
-#define GEM_LOG_TILE_SET_MAP_CHANGES true
+#define GEM_LOG_TILE_SET_MAP_CHANGES false
 #endif
 
 GPU::TileSet getTileSet(const u8 lcdc) {

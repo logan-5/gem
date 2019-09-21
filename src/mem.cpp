@@ -3,10 +3,9 @@
 #include "bootstrap.hpp"
 
 #include "gpu.hpp"
+#include "io.hpp"
 
 #include <array>
-
-#include <iostream>
 
 namespace {
 constexpr std::array<gem::u8, 2> zeroData{0x00, 0x00};
@@ -15,10 +14,11 @@ std::array<gem::u8, 2> garbage{0x00, 0x00};
 
 namespace gem {
 
-Mem::Mem(Block rom, GPU& gpu)
+Mem::Mem(Block rom, GPU& gpu, IO& io)
     : ROM(makeBlock<0x00, 0x3FFF>(std::move(rom)))
     , bootstrap(::gem::loadBootstrapROM())
     , gpu{gpu}
+    , io{io}
     , externalRam(makeBlock<0xA000, 0xBFFF>())
     , workingRam(makeBlock<0xC000, 0xDFFF>())
     , zeroPage(makeBlock<0xFF80, 0xFFFF>()) {}
@@ -27,13 +27,8 @@ u8 Mem::read(u16 address) const {
     return *ptr(address);
 }
 
-static u8 lastFF01 = 'h';
 void Mem::write(u16 address, u8 value) {
-    if (address == 0xFF01) {
-        lastFF01 = value;
-    } else if (address == 0xFF02 && value == 0x81) {
-        std::cout << lastFF01;
-    } else {
+    if (!io.consumeWrite(address, value)) {
         *mut_ptr(address) = value;
     }
 }
@@ -132,10 +127,9 @@ struct GetPtr {
 
                             default:
                                 if constexpr (Write) {
-                                    return ::garbage.data();
+                                    return mem.io.writableRegisterPtr(address);
                                 } else {
-                                    // not implemented yet
-                                    return ::zeroData.data();
+                                    return mem.io.readOnlyRegisterPtr(address);
                                 }
                         }
                 }

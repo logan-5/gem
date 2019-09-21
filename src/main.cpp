@@ -1,6 +1,7 @@
 #include "cpu.hpp"
 #include "fs.hpp"
 #include "gpu.hpp"
+#include "io.hpp"
 #include "mem.hpp"
 #include "rom.hpp"
 #include "screen.hpp"
@@ -24,10 +25,12 @@ int main(int argc, const char* argv[]) {
     gem::Window window;
     gem::Screen screen{window};
     gem::GPU gpu{screen};
-    gem::Mem mem{*std::move(rom), gpu};
+    gem::IO io;
+    gem::Mem mem{*std::move(rom), gpu, io};
     gem::CPU cpu{mem};
     while (window.isOpen()) {
         cpu.execute();
         gpu.step(cpu.getDeltaTicks());
+        io.update();
     }
 }

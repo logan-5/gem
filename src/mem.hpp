@@ -8,11 +8,12 @@
 namespace gem {
 
 struct GPU;
+struct IO;
 
 struct Mem {
     using Block = std::vector<u8>;
 
-    explicit Mem(Block rom, GPU& gpu);
+    explicit Mem(Block rom, GPU& gpu, IO& io);
 
     u8 read(u16 address) const;
     void write(u16 address, u8 value);
@@ -37,6 +38,7 @@ struct Mem {
     Block ROM;
     Block bootstrap;
     GPU& gpu;
+    IO& io;
     Block externalRam;
     Block workingRam;
     Block zeroPage;
