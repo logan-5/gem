@@ -332,6 +332,8 @@ SBC('H', '0x9C')
 SBC('L', '0x9D')
 Opcode('SBC A, (HL)', '0x9E', 0, 8,
        'alu::sbc8(cpu.reg.getAMut(), cpu.bus.read(cpu.reg.getHL()), cpu);', False)
+Opcode('SBC A, n', '0xDE', 1, 8,
+       'alu::sbc8(cpu.reg.getAMut(), cpu.readPC(), cpu);', False)
 
 
 def AND(r, code):
