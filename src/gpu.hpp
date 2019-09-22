@@ -132,6 +132,7 @@ struct GPU {
     void step(DeltaTicks deltaTicks);
 
     bool spritesEnabled() const;
+	std::vector<usize> findSpritesIntersectingCurrentLine();
 
    private:
     std::reference_wrapper<Screen> screen;

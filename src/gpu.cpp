@@ -186,6 +186,22 @@ decltype(auto) index(A&& a, std::size_t idx) {
 #endif
 }
 
+template <typename T>
+decltype(auto) assert_unwrap(std::optional<T>& opt) {
+    GEM_ASSERT(opt.has_value());
+    return *opt;
+}
+template <typename T>
+decltype(auto) assert_unwrap(const std::optional<T>& opt) {
+    GEM_ASSERT(opt.has_value());
+    return *opt;
+}
+template <typename T>
+decltype(auto) assert_unwrap(std::optional<T>&& opt) {
+    GEM_ASSERT(opt.has_value());
+    return *opt;
+}
+
 #ifndef NDEBUG
 #define GEM_LOG_TILE_SET_MAP_CHANGES false
 #endif
@@ -275,14 +291,12 @@ Color pixelFromColorCode(const GPU::ColorCode cc) {
 }  // namespace
 
 void GPU::renderScanLine() {
+    std::array<u8, Screen::Width * Color::size()> line;
+
     const TileMap tileMap = getTileMap(this->lcdc);
     const TileSet tileSet = getTileSet(this->lcdc);
-
     const u16 mapStart = getMapStart(tileMap);
-
     const u16 yOffset = this->scrollY + this->currentLine;
-
-    std::array<u8, Screen::Width * 4> line;
 
     for (u16 i = 0; i < Screen::Width; ++i) {
         const u16 xOffset = i + this->scrollX;
@@ -302,9 +316,59 @@ void GPU::renderScanLine() {
               tile->pixels[pixelColumn + pixelRow * GPU::Tile::Width];
         const auto pixel = pixelFromColorCode(pixelCC);
 
-        std::copy_n(pixel.begin(), pixel.size(), line.begin() + i * 4u);
+        std::copy_n(pixel.begin(), pixel.size(),
+                    line.begin() + i * Color::size());
     }
+
+    if (spritesEnabled()) {
+        const auto intersectors = findSpritesIntersectingCurrentLine();
+        for (auto& idx : intersectors) {
+            OAM& oam = assert_unwrap(cachedSprites[idx]);
+
+            std::optional<Tile>& tile = index(cachedTiles, oam.tileNumber);
+            if (!tile) {
+                tile = loadCachedTile(oam.tileNumber * Tile::MemSize);
+            }
+
+            const auto pixelRow =
+                  currentLine - (static_cast<int>(oam.screenPosYPlus16) - 16);
+            GEM_ASSERT(pixelRow < Tile::Height);
+            const int leftEdge = static_cast<int>(oam.screenPosXPlus8) - 8;
+
+            for (int i = std::max(leftEdge, 0);
+                 i < std::min(leftEdge + Tile::Width,
+                              static_cast<int>(Screen::Width));
+                 ++i) {
+                const ColorCode pixelCC = tile->pixels[static_cast<usize>(
+                      (i - leftEdge) + pixelRow * Tile::Height)];
+                const auto pixel = pixelFromColorCode(pixelCC);
+                std::copy_n(
+                      pixel.begin(), pixel.size(),
+                      line.begin() + static_cast<usize>(i) * Color::size());
+            }
+        }
+    }
+
     this->screen.get().renderLine(line, yOffset);
+}
+
+bool GPU::spritesEnabled() const {
+    return true;  // bitwise::test<1>(lcdc);
+}
+
+std::vector<usize> GPU::findSpritesIntersectingCurrentLine() {
+    std::vector<usize> intersectingIndices;
+    for (u16 i = 0; i < cachedSprites.size(); ++i) {
+        std::optional<OAM>& oam = cachedSprites[i];
+        if (!oam) {
+            oam = loadCachedOAM(i * SpriteData::OAMBlockSize);
+        }
+        const auto top = static_cast<int>(oam->screenPosYPlus16) - 16;
+        if (top <= this->currentLine && this->currentLine <= top + 8) {
+            intersectingIndices.push_back(i);
+        }
+    }
+    return intersectingIndices;
 }
 
 void GPU::dumpTileMemory() {
