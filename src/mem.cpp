@@ -98,8 +98,12 @@ struct GetPtr {
 
                     case 0x0E00:
                         if (address <= 0xFE9F) {
-                            return mem.gpu.spriteData.data() +
-                                   (address - 0xFE00);
+                            if constexpr (Write) {
+                                return mem.gpu.writableSpriteDataPtr(address -
+                                                                     0xFE00);
+                            } else {
+                                return mem.gpu.spriteDataPtr(address - 0xFE00);
+                            }
                         }
                         if constexpr (Write) {
                             return ::garbage.data();

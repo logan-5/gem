@@ -56,12 +56,50 @@ void GPU::invalidateTileCacheForAddress(u16 address) {
     cachedTiles[address] = std::nullopt;
 }
 
-GPU::GPU(Screen& screen)
-    : spriteData{Mem::makeBlock<0xFE00, 0xFE9F>()}
-    , screen{screen}
-    , vram{Mem::makeBlock<0x8000, 0x9FFF>()}
-    , cachedTiles((TileSet0End - TileSet1Start) / Tile::MemSize, std::nullopt) {
+namespace {
+GPU::OAM loadOAMFromPtr(const u8* data) {
+    GPU::OAM oam;
+    oam.screenPosXPlus8 = data[0];
+    oam.screenPosYPlus16 = data[1];
+    oam.tileNumber = data[2];
+
+    using namespace gem::bitwise;
+    oam.priority =
+          test<7>(data[3]) ? GPU::Priority::Behind : GPU::Priority::Front;
+    oam.yFlip = test<6>(data[3]);
+    oam.xFlip = test<5>(data[3]);
+    oam.palette = test<4>(data[3]) ? GPU::Palette::_1 : GPU::Palette::_0;
+
+    return oam;
 }
+}  // namespace
+
+GPU::OAM GPU::loadCachedOAM(u16 address) const {
+    return loadOAMFromPtr(spriteDataPtr(address));
+}
+
+void GPU::invalidateOAMCacheForAddress(u16 address) {
+    address /= GPU::SpriteData::OAMBlockSize;
+    cachedSprites[address] = std::nullopt;
+}
+
+std::vector<GPU::OAM> GPU::SpriteData::read() const {
+    std::vector<OAM> ret;
+    ret.reserve(SpriteData::TotalSprites);
+    for (u8 i = 0; i < this->block.size(); i += SpriteData::OAMBlockSize) {
+        const u8* data = this->block.data() + i;
+        ret.emplace_back(loadOAMFromPtr(data));
+    }
+    return ret;
+}
+
+GPU::GPU(Screen& screen)
+    : screen{screen}
+    , vram{Mem::makeBlock<0x8000, 0x9FFF>()}
+    , cachedTiles((TileSet0End - TileSet1Start) / Tile::MemSize, std::nullopt)
+    , cachedSprites(
+            (SpriteData::End - SpriteData::Start) / SpriteData::OAMBlockSize,
+            std::nullopt) {}
 
 void GPU::step(DeltaTicks deltaTicks) {
     if (auto nextMode = std::visit(

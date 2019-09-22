@@ -35,6 +35,9 @@ struct GPU {
         TileMap0End = 0x9C00,
         TileMap1Start = 0x9C00,
         TileMap1End = 0xA000,
+
+        SpriteTableStart = 0x8000,
+        SpriteTableEnd = 0x9000,
     };
 
     enum class TileSet : u8 {
@@ -45,26 +48,30 @@ struct GPU {
         _0,
         _1,
     };
+    enum class Palette : u8 { _0, _1 };
+    enum class Priority : u8 { Front, Behind };
 
-    explicit GPU(Screen& screen);
+    struct OAM {
+        u8 screenPosXPlus8;
+        u8 screenPosYPlus16;
+        u8 tileNumber;
+        Palette palette;
+        Priority priority;
+        bool xFlip;
+        bool yFlip;
+    };
+    struct SpriteData {
+        enum : u16 {
+            TotalSprites = 40,
+            OAMBlockSize = 4,
+            Start = 0xFE00,
+            End = 0xFEA0,
+        };
+        static_assert(TotalSprites * OAMBlockSize == (End - Start));
+        std::array<u8, End - Start> block = {};
 
-    void setMem(Mem* const mem) { this->mem = mem; }
-
-    const u8* vramPtr(const u16 address) const { return vram.data() + address; }
-    u8* writableVramPtr(const u16 address) {
-        if (address < TileSet0End - VideoRAMStart) {
-            invalidateTileCacheForAddress(address);
-        }
-        return vram.data() + address;
-    }
-    const u8* registerPtr(const u16 address) const {
-        return const_cast<GPU*>(this)->registerPtr(address);
-    }
-    u8* registerPtr(const u16 address);
-
-    Mem::Block spriteData;
-
-    void step(DeltaTicks deltaTicks);
+        std::vector<OAM> read() const;
+    };
 
     struct Color {
        public:
@@ -99,11 +106,39 @@ struct GPU {
 #endif
     };
 
+    explicit GPU(Screen& screen);
+
+    void setMem(Mem* const mem) { this->mem = mem; }
+
+    const u8* vramPtr(const u16 address) const { return vram.data() + address; }
+    u8* writableVramPtr(const u16 address) {
+        if (address < TileSet0End - VideoRAMStart) {
+            invalidateTileCacheForAddress(address);
+        }
+        return vram.data() + address;
+    }
+    const u8* registerPtr(const u16 address) const {
+        return const_cast<GPU*>(this)->registerPtr(address);
+    }
+    u8* registerPtr(const u16 address);
+    const u8* spriteDataPtr(const u16 address) const {
+        return spriteData.block.data() + address;
+    }
+    u8* writableSpriteDataPtr(const u16 address) {
+        invalidateOAMCacheForAddress(address);
+        return vram.data() + address;
+    }
+
+    void step(DeltaTicks deltaTicks);
+
+    bool spritesEnabled() const;
+
    private:
     std::reference_wrapper<Screen> screen;
     Mem* mem = nullptr;
 
     Mem::Block vram;
+    SpriteData spriteData;
 
     struct Mode;
     struct Mode_Base {
@@ -172,6 +207,10 @@ struct GPU {
     CachedTile loadCachedTile(u16 address) const;
     void invalidateTileCacheForAddress(u16 address);
     std::vector<std::optional<CachedTile>> cachedTiles;
+
+    OAM loadCachedOAM(u16 address) const;
+    void invalidateOAMCacheForAddress(u16 address);
+    std::vector<std::optional<OAM>> cachedSprites;
 
     void renderScanLine();
 
