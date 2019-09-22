@@ -39,12 +39,13 @@ int main(int argc, const char* argv[]) {
     gem::GPU gpu{screen};
     gem::IO io;
     gem::Mem mem{*std::move(rom), gpu, io};
+    io.setMem(&mem);
     gpu.setMem(&mem);
     gem::CPU cpu{mem};
     while (window.isOpen()) {
         cpu.execute();
         gpu.step(cpu.getDeltaTicks());
-        io.update();
+        io.update(cpu.getDeltaTicks());
         cpu.processInterrupts();
     }
 }

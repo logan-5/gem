@@ -49,16 +49,17 @@ struct Window::Impl {
     explicit Impl()
         : window{sf::VideoMode{Screen::Width * Scale, Screen::Height * Scale},
                  "gem"} {
-        window.setFramerateLimit(60);
-        window.setVerticalSyncEnabled(true);
+        // window.setFramerateLimit(60);
+        // window.setVerticalSyncEnabled(true);
     }
 
     bool isOpen() const { return window.isOpen(); }
     void processEvents() {
         sf::Event event;
         while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
+            if (event.type == sf::Event::Closed) {
                 window.close();
+            }
         }
     }
 

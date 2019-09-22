@@ -1,6 +1,8 @@
 #include "io.hpp"
 
+#include "bitwise.hpp"
 #include "input.hpp"
+#include "mem.hpp"
 #include "opcode.hpp"
 
 #include <array>
@@ -17,6 +19,14 @@ const u8* IO::readOnlyRegisterPtr(const u16 address) const {
     switch (address) {
         case Registers::P1:
             return &this->p1;
+        case Registers::DIV:
+            return &this->div;
+        case Registers::TIMA:
+            return &this->timer;
+        case Registers::TMA:
+            return &this->tma;
+        case Registers::TAC:
+            return &this->tac;
         default:
             return blob.data() + (address - RegisterRange::Start);
     }
@@ -24,7 +34,16 @@ const u8* IO::readOnlyRegisterPtr(const u16 address) const {
 
 u8* IO::writableRegisterPtr(const u16 address) {
     GEM_ASSERT(!IO{*this}.consumeWrite(address, 0x00));
-    return blob.data() + (address - RegisterRange::Start);
+    switch (address) {
+        case Registers::TIMA:
+            return &this->timer;
+        case Registers::TMA:
+            return &this->tma;
+        case Registers::TAC:
+            return &this->tac;
+        default:
+            return blob.data() + (address - RegisterRange::Start);
+    }
 }
 
 bool IO::consumeWrite(const u16 address, const u8 value) {
@@ -40,6 +59,9 @@ bool IO::consumeWrite(const u16 address, const u8 value) {
             if (value == 0x81) {
                 GEM_LOG_EXACTLY(this->sb);
             }
+            return true;
+        case Registers::DIV:
+            this->div = 0x00;
             return true;
     }
     return false;
@@ -85,6 +107,53 @@ void IO::updateP1() {
     }
 }
 
-void IO::update() {}
+namespace {
+u16 getTimerThreshold(const u8 tac) {
+    switch (tac & 0b11) {
+        case 0b00:
+            return 64;
+        case 0b01:
+            return 1;
+        case 0b10:
+            return 4;
+        case 0b11:
+            return 16;
+    }
+    GEM_UNREACHABLE();
+}
+}  // namespace
+
+void IO::update(Ticks ticks) {
+    timerSubCounter += ticks;
+    while (timerSubCounter > 4) {
+        ++timerCounter;
+        timerSubCounter -= 4;
+
+        divCounter = (divCounter + 1) % 16;
+        if (divCounter == 0) {
+            ++div;
+        }
+    }
+    const auto timerThreshold = getTimerThreshold(tac);
+    while (timerCounter > timerThreshold) {
+        incTimer();
+        timerCounter -= timerThreshold;
+    }
+}
+
+void IO::incTimer() {
+    if (bitwise::test<2>(tac)) {
+        const u16 newTimer = static_cast<u16>(timer) + 1;
+
+        const bool fireInterrupt = newTimer > 0xFF;
+        if (fireInterrupt) {
+            timer = tma;
+            GEM_ASSERT(mem != nullptr);
+            mem->interruptFlags.fireTimer();
+        } else {
+            timer = u8(newTimer);
+        }
+    }
+}
 
 }  // namespace gem
