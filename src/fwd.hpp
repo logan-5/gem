@@ -6,6 +6,10 @@
 #include <cstring>
 #include <vector>
 
+#if defined(__GNUC__) || defined(__clang__)
+#define GEM_GCC_CLANG true
+#endif
+
 #ifndef NDEBUG
 #define GEM_ENABLE_ASSERTS true
 #endif
@@ -22,8 +26,13 @@
 #if GEM_ENABLE_ASSERTS
 #define GEM_UNREACHABLE() GEM_ASSERT(false)
 #else
-// TODO platform detection
+#if GEM_GCC_CLANG
 #define GEM_UNREACHABLE() __builtin_unreachable()
+#else
+#define GEM_UNREACHABLE() \
+    do {                  \
+    } while (false)
+#endif
 #endif
 
 #include <iostream>
@@ -53,6 +62,14 @@
 #define GEM_BREAKPOINT() \
     do {                 \
     } while (false)
+#endif
+
+#if GEM_GCC_CLANG
+#define GEM_LIKELY(...) (__VA_ARGS__)
+#define GEM_UNLIKELY(...) (__VA_ARGS__)
+#else
+#define GEM_LIKELY(...) (__VA_ARGS__)
+#define GEM_UNLIKELY(...) (__VA_ARGS__)
 #endif
 
 namespace gem {
