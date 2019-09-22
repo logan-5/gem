@@ -25,6 +25,8 @@ struct IO {
     void update();
 
    private:
+    void updateP1();
+
     u8 p1{0xFF};
     u8 sb;
 
