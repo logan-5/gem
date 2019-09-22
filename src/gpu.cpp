@@ -59,8 +59,8 @@ void GPU::invalidateTileCacheForAddress(u16 address) {
 namespace {
 GPU::OAM loadOAMFromPtr(const u8* data) {
     GPU::OAM oam;
-    oam.screenPosXPlus8 = data[0];
-    oam.screenPosYPlus16 = data[1];
+    oam.screenPosYPlus16 = data[0];
+    oam.screenPosXPlus8 = data[1];
     oam.tileNumber = data[2];
 
     using namespace gem::bitwise;
@@ -83,14 +83,8 @@ void GPU::invalidateOAMCacheForAddress(u16 address) {
     cachedSprites[address] = std::nullopt;
 }
 
-std::vector<GPU::OAM> GPU::SpriteData::read() const {
-    std::vector<OAM> ret;
-    ret.reserve(SpriteData::TotalSprites);
-    for (u8 i = 0; i < this->block.size(); i += SpriteData::OAMBlockSize) {
-        const u8* data = this->block.data() + i;
-        ret.emplace_back(loadOAMFromPtr(data));
-    }
-    return ret;
+void GPU::invalidateAllOAMCache() {
+    std::fill(cachedSprites.begin(), cachedSprites.end(), std::nullopt);
 }
 
 GPU::GPU(Screen& screen)
@@ -226,10 +220,28 @@ u8* GPU::registerPtr(const u16 address) {
             return &this->stat;
         case Registers::LYC:
             return &this->lyc;
+        case Registers::DMA:
+            return &this->dma;
         // TODO add more
         default:
             return garbage.data();
     }
+}
+
+bool GPU::consumeWrite(const u16 address, const u8 value) {
+    if (address == Registers::DMA) {
+        dma = value;
+        dmaTransfer();
+        return true;
+    }
+    return false;
+}
+
+void GPU::dmaTransfer() {
+    const u16 sourceAddr = u16(dma << 8u);
+    const u8* sourcePtr = mem->ptr(sourceAddr);
+    std::copy_n(sourcePtr, 0x9F, spriteData.block.data());
+    invalidateAllOAMCache();
 }
 
 namespace {
@@ -428,7 +440,7 @@ std::vector<usize> GPU::findSpritesIntersectingCurrentLine() {
             oam = loadCachedOAM(i * SpriteData::OAMBlockSize);
         }
         const auto top = static_cast<int>(oam->screenPosYPlus16) - 16;
-        if (top <= this->currentLine && this->currentLine <= top + 8) {
+        if (top <= this->currentLine && this->currentLine < top + 8) {
             intersectingIndices.push_back(i);
         }
     }

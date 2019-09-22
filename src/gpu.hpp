@@ -23,6 +23,7 @@ struct GPU {
         WNDPOSY = 0xFF4A,
         LY = 0xFF44,
         LYC = 0xFF45,
+        DMA = 0xFF46,
     };
 
     enum : u16 {
@@ -71,8 +72,6 @@ struct GPU {
         };
         static_assert(TotalSprites * OAMBlockSize == (End - Start));
         std::array<u8, End - Start> block = {};
-
-        std::vector<OAM> read() const;
     };
 
     struct Color {
@@ -130,10 +129,13 @@ struct GPU {
         invalidateOAMCacheForAddress(address);
         return vram.data() + address;
     }
+    bool consumeWrite(const u16 address, const u8 value);
 
     void step(DeltaTicks deltaTicks);
 
     void updateSTAT();
+
+    void dmaTransfer();
 
     bool lcdEnabled() const;
     bool spritesEnabled() const;
@@ -214,6 +216,7 @@ struct GPU {
     u8 stat = 0;
     u8 lyc = 0;
     bool statSignal = false;
+    u8 dma = 0;
 
     using CachedTile = Tile;
     CachedTile loadCachedTile(u16 address) const;
@@ -222,6 +225,7 @@ struct GPU {
 
     OAM loadCachedOAM(u16 address) const;
     void invalidateOAMCacheForAddress(u16 address);
+    void invalidateAllOAMCache();
     std::vector<std::optional<OAM>> cachedSprites;
 
     void renderScanLine();

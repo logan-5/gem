@@ -28,7 +28,9 @@ u8 Mem::read(u16 address) const {
 }
 
 void Mem::write(u16 address, u8 value) {
-    if (!io.consumeWrite(address, value)) {
+    const bool consumed =
+          io.consumeWrite(address, value) || gpu.consumeWrite(address, value);
+    if (!consumed) {
         *mut_ptr(address) = value;
     }
 }
