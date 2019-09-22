@@ -87,6 +87,7 @@ void IO::updateP1() {
                 nybble |= 0b0001;
             }
             p1 |= ~nybble;
+            break;
         }
         case 0x10: {
             u8 nybble = 0xF0;
@@ -103,6 +104,7 @@ void IO::updateP1() {
                 nybble |= 0b0001;
             }
             p1 |= ~nybble;
+            break;
         }
     }
 }
