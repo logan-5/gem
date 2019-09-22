@@ -32,7 +32,8 @@ struct Mem {
         return block;
     }
 
-    InterruptRegister enabledInterrupts, interruptFlags;
+    Interrupt::InterruptEnabledRegister enabledInterrupts;
+    Interrupt::InterruptFlagsRegister interruptFlags;
 
    private:
     template <bool>

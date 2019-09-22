@@ -136,12 +136,22 @@ struct CPU {
     Mem& bus;
 
     void execute() {
-        deltaTicks = op::runOpcode(readPC(), *this);
-        ticks += deltaTicks;
+        if (!halted) {
+            deltaTicks = op::runOpcode(readPC(), *this);
+            ticks += deltaTicks;
+        }
+        if (pendingIME) {
+            ime = true;
+            pendingIME = false;
+        }
     }
     u8 readPC() {
         const auto ret = peekPC();
-        ++reg.PC;
+        if (!haltBug) {
+            ++reg.PC;
+        } else {
+            haltBug = false;
+        }
         return ret;
     }
     u16 readPC16() {
@@ -159,7 +169,7 @@ struct CPU {
     Ticks getTicks() const { return ticks; }
     DeltaTicks getDeltaTicks() const { return deltaTicks; }
 
-    void ei() { ime = true; }
+    void ei() { pendingIME = true; }
     void di() { ime = false; }
 
     void processInterrupts();
@@ -167,11 +177,16 @@ struct CPU {
     u16 popStack();
     void handleInterrupt(const u16 destination);
     void returnFromInterrupt();
+    u8 getPendingInterrupts() const;
+    void halt();
 
    private:
     Ticks ticks = 0;
     DeltaTicks deltaTicks = 0;
     bool ime = false;
+    bool pendingIME = false;
+    bool halted = false;
+    bool haltBug = false;
 };
 
 }  // namespace gem

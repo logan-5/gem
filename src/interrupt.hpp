@@ -6,39 +6,40 @@
 #include "bitwise.hpp"
 
 namespace gem {
-struct InterruptRegister {
-   public:
-    enum Registers {
-        IE = 0xFFFF,
-        IF = 0xFF0F,
-    };
-    enum class Bit : unsigned {
-        VBlank = 0,
-        STAT = 1,
-        Timer = 2,
-        Serial = 3,
-        Joypad = 4,
-    };
-    enum class Handler : u16 {
-        VBlank = 0x40,
-        STAT = 0x48,
-        Timer = 0x50,
-        Serial = 0x58,
-        Joypad = 0x60,
-    };
+namespace Interrupt {
+enum Registers {
+    IE = 0xFFFF,
+    IF = 0xFF0F,
+};
+enum class Bit : unsigned {
+    VBlank = 0,
+    STAT = 1,
+    Timer = 2,
+    Serial = 3,
+    Joypad = 4,
+};
+enum class Handler : u16 {
+    VBlank = 0x40,
+    STAT = 0x48,
+    Timer = 0x50,
+    Serial = 0x58,
+    Joypad = 0x60,
+};
 
-    struct BitAndHandler {
-        Bit bit;
-        Handler handler;
-    };
-    static constexpr std::array<BitAndHandler, 5> bitAndHandlerPairs = {{
-          {Bit::VBlank, Handler::VBlank},
-          {Bit::STAT, Handler::STAT},
-          {Bit::Timer, Handler::Timer},
-          {Bit::Serial, Handler::Serial},
-          {Bit::Joypad, Handler::Joypad},
-    }};
+struct BitAndHandler {
+    Bit bit;
+    Handler handler;
+};
+static constexpr std::array<BitAndHandler, 5> bitAndHandlerPairs = {{
+      {Bit::VBlank, Handler::VBlank},
+      {Bit::STAT, Handler::STAT},
+      {Bit::Timer, Handler::Timer},
+      {Bit::Serial, Handler::Serial},
+      {Bit::Joypad, Handler::Joypad},
+}};
 
+template <typename I>
+struct InterruptCommon {
     bool vblank() const noexcept { return test<idx(Bit::VBlank)>(); }
     bool stat() const noexcept { return test<idx(Bit::STAT)>(); }
     bool timer() const noexcept { return test<idx(Bit::Timer)>(); }
@@ -51,7 +52,21 @@ struct InterruptRegister {
     void fireSerial() noexcept { set<idx(Bit::Serial)>(); }
     void fireJoypad() noexcept { set<idx(Bit::Joypad)>(); }
 
-    u8 val = 0x00;
+    const u8* valPtr() const {
+        I::adjustVal(val);
+        return &val;
+    }
+    u8* valPtr() {
+        I::adjustVal(val);
+        return &val;
+    }
+
+    u8 getMasked() const { return getVal() & 0x1F; }
+
+   private:
+    u8 getVal() const { return *valPtr(); }
+
+    mutable u8 val = 0x00;
 
    private:
     template <unsigned Bit>
@@ -63,6 +78,13 @@ struct InterruptRegister {
         bitwise::set<Bit>(val);
     }
 };
+struct InterruptEnabledRegister : InterruptCommon<InterruptEnabledRegister> {
+    static constexpr void adjustVal(u8&) {}
+};
+struct InterruptFlagsRegister : InterruptCommon<InterruptFlagsRegister> {
+    static constexpr void adjustVal(u8& val) { val |= 0b1110'0000; }
+};
+}  // namespace Interrupt
 }  // namespace gem
 
 #endif

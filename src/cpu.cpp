@@ -59,18 +59,35 @@ gem::u16 gem::CPU::popStack() {
 #undef GEM_DEBUG_POP_STACK
 
 namespace gem {
+
+u8 CPU::getPendingInterrupts() const {
+    return bus.interruptFlags.getMasked() & bus.enabledInterrupts.getMasked();
+}
+
 void CPU::processInterrupts() {
-    if (ime && (bus.enabledInterrupts.val != 0) &&
-        (bus.interruptFlags.val != 0)) {
-        const auto& interrupts = InterruptRegister::bitAndHandlerPairs;
-        const u8 interruptsThatOccurred =
-              bus.interruptFlags.val & bus.enabledInterrupts.val;
-        for (auto& bhp : interrupts) {
-            if (bitwise::test(interruptsThatOccurred, idx(bhp.bit))) {
-                bitwise::reset(bus.interruptFlags.val, idx(bhp.bit));
-                handleInterrupt(idx(bhp.handler));
+    if (((bus.enabledInterrupts.getMasked()) != 0) &&
+        ((bus.interruptFlags.getMasked()) != 0)) {
+        if (const u8 interruptsThatOccurred = getPendingInterrupts()) {
+            halted = false;
+            if (ime) {
+                const auto& interrupts = Interrupt::bitAndHandlerPairs;
+                for (auto& bhp : interrupts) {
+                    if (bitwise::test(interruptsThatOccurred, idx(bhp.bit))) {
+                        bitwise::reset(*bus.interruptFlags.valPtr(),
+                                       idx(bhp.bit));
+                        handleInterrupt(idx(bhp.handler));
+                    }
+                }
             }
         }
+    }
+}
+
+void CPU::halt() {
+    if (!ime && (getPendingInterrupts() != 0)) {
+        haltBug = true;
+    } else {
+        halted = true;
     }
 }
 
