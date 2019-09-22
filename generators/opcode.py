@@ -191,61 +191,9 @@ Opcode('LDHL SP, n', '0xF8', 1, 12, """const u16 addr = alu::add16Signed8(cpu.re
 Opcode('LD (nn), SP', '0x08', 1, 20,
        'cpu.bus.write(cpu.readPC16(), cpu.reg.getSP());', False)
 
-globals_.append("""\
-#ifndef NDEBUG
-#define GEM_DEBUG_STACK false
-#endif
-
-#if GEM_DEBUG_STACK
-#include <stack>
-static std::stack<gem::u16> debugStack;
-#endif""")
-helper_functions.append("""\
-#if GEM_DEBUG_STACK
-#define GEM_DEBUG_PUSH_STACK(...) do { ::debugStack.push(__VA_ARGS__); } while (false)
-#else
-#define GEM_DEBUG_PUSH_STACK(...) do {} while (false)
-#endif
-void pushStack(gem::u16 val, gem::CPU& cpu) {
-    using namespace gem;
-    const u8 low8 = u8(val & 0x00FF);
-    const u8 high8 = u8(val >> 8u);
-
-    cpu.reg.decSP();
-    cpu.bus.write(cpu.reg.getSP(), high8);
-    cpu.reg.decSP();
-    cpu.bus.write(cpu.reg.getSP(), low8);
-
-    GEM_DEBUG_PUSH_STACK(val);
-}
-#undef GEM_DEBUG_PUSH_STACK""")
-helper_functions.append("""\
-#if GEM_DEBUG_STACK
-#define GEM_DEBUG_POP_STACK(...) do { \\
-    GEM_ASSERT(!::debugStack.empty()); \\
-    GEM_ASSERT((__VA_ARGS__) == ::debugStack.top() && "stack corruption!"); \\
-    ::debugStack.pop(); } while (false)
-#else
-#define GEM_DEBUG_POP_STACK(...) do {} while (false)
-#endif
-gem::u16 popStack(gem::CPU& cpu) {
-    using namespace gem;
-
-    const u8 low8 = cpu.bus.read(cpu.reg.getSP());
-    cpu.reg.incSP();
-    const u8 high8 = cpu.bus.read(cpu.reg.getSP());
-    cpu.reg.incSP();
-
-    const u16 val = u16(high8 << 8u) | u16(low8);
-
-    GEM_DEBUG_POP_STACK(val);
-    return val;
-}
-#undef GEM_DEBUG_POP_STACK""")
-
 
 def PUSH_nn(r, code):
-    return Opcode('PUSH {}'.format(r), code, 0, 16, 'pushStack(cpu.reg.get{}(), cpu);'.format(r), False)
+    return Opcode('PUSH {}'.format(r), code, 0, 16, 'cpu.pushStack(cpu.reg.get{}());'.format(r), False)
 
 
 PUSH_nn('AF', '0xF5')
@@ -255,7 +203,7 @@ PUSH_nn('HL', '0xE5')
 
 
 def POP_nn(r, code):
-    return Opcode('POP {}'.format(r), code, 0, 12, 'cpu.reg.set{}(popStack(cpu));'.format(r), False)
+    return Opcode('POP {}'.format(r), code, 0, 12, 'cpu.reg.set{}(cpu.popStack());'.format(r), False)
 
 
 POP_nn('AF', '0xF1')
@@ -749,7 +697,7 @@ helper_functions.append("""\
 void call_impl(gem::CPU& cpu) {
     using namespace gem;
     const u16 target = cpu.readPC16();
-    pushStack(cpu.reg.getPC(), cpu);
+    cpu.pushStack(cpu.reg.getPC());
     cpu.reg.setPC(target);
 }""")
 
@@ -774,7 +722,7 @@ CALL_cc_nn('C', '0xDC', 'C', False)
 
 for n in (0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38):
     code = hex(n + 0xC7)
-    Opcode('RST {}'.format(hex(n)), code, 0, 32, """pushStack(cpu.reg.getPC(), cpu);
+    Opcode('RST {}'.format(hex(n)), code, 0, 32, """cpu.pushStack(cpu.reg.getPC());
     cpu.reg.setPC(0x00 + {});
     """.format(hex(n)), True)
 
@@ -785,7 +733,7 @@ for n in (0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38):
 helper_functions.append("""\
 void ret_impl(gem::CPU& cpu) {
     using namespace gem;
-    const u16 next = popStack(cpu);
+    const u16 next = cpu.popStack();
     cpu.reg.setPC(next);   
 }""")
 
@@ -808,8 +756,10 @@ RET_cc('C', '0xD8', 'C', False)
 # INTERRUPTS #######################################################################################
 ####################################################################################################
 
-Opcode('DI', '0xF3', 0, 4, '// TODO', False)
-Opcode('EI', '0xFB', 0, 4, '// TODO', False)
+Opcode('DI', '0xF3', 0, 4, 'cpu.di();', False)
+Opcode('EI', '0xFB', 0, 4, 'cpu.ei();', False)
+
+Opcode('RETI', '0xD9', 0, 8, 'cpu.returnFromInterrupt();', False)
 
 # tools for adding new opcodes
 

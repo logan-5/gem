@@ -48,6 +48,8 @@ struct GPU {
 
     explicit GPU(Screen& screen);
 
+    void setMem(Mem* const mem) { this->mem = mem; }
+
     const u8* vramPtr(const u16 address) const { return vram.data() + address; }
     u8* writableVramPtr(const u16 address) {
         if (address < TileSet0End - VideoRAMStart) {
@@ -99,6 +101,7 @@ struct GPU {
 
    private:
     std::reference_wrapper<Screen> screen;
+    Mem* mem = nullptr;
 
     Mem::Block vram;
 
@@ -171,8 +174,8 @@ struct GPU {
     std::vector<std::optional<CachedTile>> cachedTiles;
 
     void renderScanLine();
-	
-	void dumpTileMemory();
+
+    void dumpTileMemory();
 };
 }  // namespace gem
 

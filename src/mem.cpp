@@ -108,6 +108,12 @@ struct GetPtr {
                         }
 
                     case 0x0F00:
+                        if (address == InterruptRegister::Registers::IE) {
+                            return &mem.enabledInterrupts.val;
+                        } else if (address ==
+                                   InterruptRegister::Registers::IF) {
+                            return &mem.interruptFlags.val;
+                        }
                         switch (address & 0x00F0) {
                             case 0x80:
                             case 0x90:

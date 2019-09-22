@@ -3,6 +3,8 @@
 
 #include "fwd.hpp"
 
+#include "interrupt.hpp"
+
 #include <vector>
 
 namespace gem {
@@ -29,6 +31,8 @@ struct Mem {
         }
         return block;
     }
+
+    InterruptRegister enabledInterrupts, interruptFlags;
 
    private:
     template <bool>

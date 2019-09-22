@@ -101,6 +101,8 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
 }
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
     gpu.screen.get().vblank();
+    GEM_ASSERT(gpu.mem != nullptr);
+    gpu.mem->interruptFlags.fireVBlank();
     GEM_ASSERT(gpu.currentLine == 154);
     gpu.currentLine = 0;
     return Mode_ScanlineOAM{};
@@ -147,12 +149,12 @@ decltype(auto) index(A&& a, std::size_t idx) {
 }
 
 #ifndef NDEBUG
-#define GEM_LOG_TILE_SET_MAP_CHANGES true
+#define GEM_LOG_TILE_SET_MAP_CHANGES false
 #endif
 
 GPU::TileSet getTileSet(const u8 lcdc) {
     const GPU::TileSet tileSet =
-          bitwise::test<4>(lcdc) ? GPU::TileSet::_0 : GPU::TileSet::_1;
+          bitwise::test<4>(lcdc) ? GPU::TileSet::_1 : GPU::TileSet::_0;
 #if GEM_LOG_TILE_SET_MAP_CHANGES
     static std::optional<GPU::TileSet> prevTileSet;
     if (std::exchange(prevTileSet, tileSet) != tileSet) {

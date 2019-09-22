@@ -3,6 +3,7 @@
 
 #include "bitwise.hpp"
 #include "fwd.hpp"
+#include "interrupt.hpp"
 #include "mem.hpp"
 #include "opcode.hpp"
 
@@ -158,9 +159,19 @@ struct CPU {
     Ticks getTicks() const { return ticks; }
     DeltaTicks getDeltaTicks() const { return deltaTicks; }
 
+    void ei() { ime = true; }
+    void di() { ime = false; }
+
+    void processInterrupts();
+    void pushStack(u16 value);
+    u16 popStack();
+    void handleInterrupt(const u16 destination);
+    void returnFromInterrupt();
+
    private:
     Ticks ticks = 0;
     DeltaTicks deltaTicks = 0;
+    bool ime = false;
 };
 
 }  // namespace gem

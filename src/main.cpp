@@ -23,6 +23,7 @@ int main(int argc, const char* argv[]) {
         std::exit(1);
     }
 
+#ifndef NDEBUG
     if (argc > 2) {
         std::vector<gem::u16> breakpoints;
         for (int i = 2; i < argc; ++i) {
@@ -31,16 +32,19 @@ int main(int argc, const char* argv[]) {
         }
         gem::op::pcBreakpoints = {std::move(breakpoints)};
     }
+#endif
 
     gem::Window window;
     gem::Screen screen{window};
     gem::GPU gpu{screen};
     gem::IO io;
     gem::Mem mem{*std::move(rom), gpu, io};
+    gpu.setMem(&mem);
     gem::CPU cpu{mem};
     while (window.isOpen()) {
         cpu.execute();
         gpu.step(cpu.getDeltaTicks());
         io.update();
+        cpu.processInterrupts();
     }
 }

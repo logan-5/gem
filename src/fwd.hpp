@@ -159,6 +159,12 @@ class FlatSet {
     std::vector<T> storage;
 };
 
+template <typename E>
+constexpr auto idx(E e) {
+    static_assert(std::is_enum_v<E>);
+    return static_cast<std::underlying_type_t<E>>(e);
+}
+
 }  // namespace gem
 
 #endif
