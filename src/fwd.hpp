@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 
 #ifndef NDEBUG
 #define GEM_ENABLE_ASSERTS true
@@ -61,6 +62,37 @@ using DeltaTicks = unsigned long long;
 template <std::size_t Size>
 struct TinyString {
     constexpr TinyString() { buf[Size] = '\0'; }
+
+    template <std::size_t BufSize, typename = std::enable_if_t<BufSize <= Size + 1>>
+    TinyString(const char (&buffer)[BufSize]) {
+        std::memcpy(this->buf.data(), buffer, BufSize);
+    }
+
+    template <std::size_t OtherSize,
+              typename = std::enable_if_t<(OtherSize < Size)>>
+    TinyString& operator=(const TinyString<OtherSize>& other) {
+        std::memcpy(this->buf.data(), other.data(), OtherSize);
+        this->buf[OtherSize] = '\0';
+        return *this;
+    }
+    template <std::size_t OtherSize,
+              typename = std::enable_if_t<(OtherSize < Size)>>
+    TinyString(const TinyString<OtherSize>& other) {
+        *this = other;
+    }
+
+    TinyString(const TinyString&) = default;
+    TinyString& operator=(const TinyString&) = default;
+
+    template <std::size_t OtherSize>
+    constexpr TinyString<Size + OtherSize> operator+(
+          const TinyString<OtherSize>& other) const {
+        TinyString<Size + OtherSize> ret;
+        std::memcpy(ret.data(), this->data(), Size);
+        std::memcpy(ret.data() + Size, other.data(), OtherSize + 1);
+        return ret;
+    }
+
     static constexpr std::size_t size() { return Size; }
     constexpr char& operator[](std::size_t s) { return buf[s]; }
     constexpr const char& operator[](std::size_t s) const { return buf[s]; }
@@ -72,17 +104,32 @@ struct TinyString {
 };
 
 template <std::size_t Size>
+constexpr TinyString<Size - 1> tiny_str(const char (&str)[Size]) noexcept {
+    return TinyString<Size - 1>{str};
+}
+
+template <std::size_t Size>
 std::ostream& operator<<(std::ostream& ostr, const TinyString<Size>& s) {
     return ostr << s.data();
 }
 
-constexpr gem::TinyString<4> hexString(const u16 val) {
-    constexpr auto lookup = "0123456789ABCDEF";
+namespace detail {
+constexpr inline auto hexLookup = "0123456789ABCDEF";
+}
+
+constexpr inline gem::TinyString<2> hexString(const u8 val) {
+    gem::TinyString<2> ret;
+    ret[0] = detail::hexLookup[(val >> 4) & 0xF];
+    ret[1] = detail::hexLookup[(val >> 0) & 0xF];
+    return ret;
+}
+
+constexpr inline gem::TinyString<4> hexString(const u16 val) {
     gem::TinyString<4> ret;
-    ret[0] = lookup[(val >> 12) & 0xF];
-    ret[1] = lookup[(val >> 8) & 0xF];
-    ret[2] = lookup[(val >> 4) & 0xF];
-    ret[3] = lookup[(val >> 0) & 0xF];
+    ret[0] = detail::hexLookup[(val >> 12) & 0xF];
+    ret[1] = detail::hexLookup[(val >> 8) & 0xF];
+    ret[2] = detail::hexLookup[(val >> 4) & 0xF];
+    ret[3] = detail::hexLookup[(val >> 0) & 0xF];
     return ret;
 }
 

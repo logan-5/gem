@@ -138,14 +138,22 @@ struct CPU {
         deltaTicks = op::runOpcode(readPC(), *this);
         ticks += deltaTicks;
     }
-    u8 readPC() { return *bus.ptr(reg.PC++); }
+    u8 readPC() {
+        const auto ret = peekPC();
+        ++reg.PC;
+        return ret;
+    }
     u16 readPC16() {
-        const u8* const ptr = bus.ptr(reg.PC);
-        const u16 ret = u16(ptr[0]) | u16(ptr[1] << 8u);
+        const auto ret = peekPC16();
         reg.PC += 2;
         return ret;
     }
     u8 peekPC() const { return *bus.ptr(reg.PC); }
+    u16 peekPC16() const {
+        const u8* const ptr = bus.ptr(reg.PC);
+        const u16 ret = u16(ptr[0]) | u16(ptr[1] << 8u);
+        return ret;
+    }
 
     Ticks getTicks() const { return ticks; }
     DeltaTicks getDeltaTicks() const { return deltaTicks; }
