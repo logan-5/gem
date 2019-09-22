@@ -227,6 +227,7 @@ struct GPU {
     void renderScanLine();
 
     void dumpTileMemory();
+    void dumpBackgroundMap(TileMap map);
 };
 }  // namespace gem
 

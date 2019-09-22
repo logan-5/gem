@@ -35,6 +35,8 @@ struct AbsolutePathView {
     std::string_view path;
 };
 
+void write(std::string_view data, const AbsolutePath& path);
+
 }  // namespace fs
 }  // namespace gem
 

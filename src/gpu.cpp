@@ -311,7 +311,7 @@ u16 getTileNumber(const GPU::TileSet set, const u8 value) {
         case GPU::TileSet::_0: {
             i8 signedValue;
             std::memcpy(&signedValue, &value, sizeof signedValue);
-            const u16 ret = u16(255 + signedValue);
+            const u16 ret = u16(256 + signedValue);
             return ret;
         }
     }
@@ -435,17 +435,38 @@ std::vector<usize> GPU::findSpritesIntersectingCurrentLine() {
     return intersectingIndices;
 }
 
+namespace {
+std::string ppmHeader(usize width, usize height) {
+    return "P3\n" + std::to_string(width) + ' ' + std::to_string(height) +
+           "\n255\n";
+}
+template <usize Width, usize Height, usize BytesPerPixel>
+struct Buffer : std::array<u8, Width * Height * BytesPerPixel> {};
+
+template <usize Width, usize Height, usize BytesPerPixel>
+void writePPM(std::string& img,
+              const Buffer<Width, Height, BytesPerPixel>& buf) {
+    for (std::size_t i = 0; i < buf.size(); ++i) {
+        img += std::to_string(buf[i]);
+        if (((i + 1) % (Width * BytesPerPixel)) == 0) {
+            img += '\n';
+        } else {
+            img += ' ';
+        }
+    }
+}
+}  // namespace
+
 void GPU::dumpTileMemory() {
     constexpr u16 totalTiles = 384;
-    constexpr u16 tilesPerRow = 24;
-    constexpr u16 tilesPerColumn = 16;
+    constexpr u16 tilesPerRow = 16;
+    constexpr u16 tilesPerColumn = 24;
     static_assert(tilesPerRow * tilesPerColumn == totalTiles);
     constexpr std::size_t imageWidth = tilesPerRow * Tile::Width;
     constexpr std::size_t imageHeight = tilesPerColumn * Tile::Height;
     constexpr std::size_t bytesPerPixel = 3;
-    std::string img = "P3\n" + std::to_string(imageWidth) + ' ' +
-                      std::to_string(imageHeight) + "\n255\n";
-    std::array<u8, imageWidth* imageHeight* bytesPerPixel> data = {};
+    std::string img = ppmHeader(imageWidth, imageHeight);
+    Buffer<imageWidth, imageHeight, bytesPerPixel> data = {};
 
     for (u16 tileNumber = 0; tileNumber < totalTiles; ++tileNumber) {
         const u16 tileAddress = tileNumber * Tile::MemSize;
@@ -472,18 +493,48 @@ void GPU::dumpTileMemory() {
         }
     }
 
-    for (std::size_t i = 0; i < data.size(); ++i) {
-        img += std::to_string(data[i]);
-        if (((i + 1) % (imageWidth * bytesPerPixel)) == 0) {
-            img += '\n';
-        } else {
-            img += ' ';
+    writePPM(img, data);
+    fs::write(img, fs::AbsolutePath{fs::RelativePath("tileData.ppm")});
+}
+
+void GPU::dumpBackgroundMap(TileMap map) {
+    constexpr usize imageWidth = 256;
+    constexpr usize imageHeight = 256;
+    constexpr u16 tilesPerRow = imageWidth / Tile::Width;
+    constexpr u16 tilesPerColumn = imageHeight / Tile::Height;
+    constexpr usize totalTiles = tilesPerRow * tilesPerColumn;
+    static_assert(totalTiles == 1024);
+    constexpr std::size_t bytesPerPixel = 3;
+    std::string img = ppmHeader(imageWidth, imageHeight);
+    Buffer<imageWidth, imageHeight, bytesPerPixel> data = {};
+
+    const auto mapStart = getMapStart(map);
+    const auto tileSet = getTileSet(lcdc);
+
+    for (u16 r = 0; r < imageHeight; ++r) {
+        for (u16 c = 0; c < imageWidth; ++c) {
+            const u16 idx = getTileMapIndex(c, r, mapStart);
+            const u8 tileValue = index(vram, idx);
+            const u16 tileAddress = getTileAddress(tileSet, tileValue);
+
+            std::optional<Tile>& tile =
+                  index(cachedTiles, tileAddress / Tile::MemSize);
+            if (!tile) {
+                tile = loadCachedTile(tileAddress);
+            }
+            const u16 pixelColumn = c % GPU::Tile::Width;
+            const u16 pixelRow = r % GPU::Tile::Height;
+
+            const ColorCode pixelCC =
+                  tile->pixels[pixelColumn + pixelRow * GPU::Tile::Width];
+            const auto pixel = pixelFromColorCode(pixelCC);
+
+            const auto index = (c + r * imageWidth) * bytesPerPixel;
+            std::copy_n(pixel.begin(), bytesPerPixel, data.begin() + index);
         }
     }
-
-    std::ofstream out{fs::AbsolutePath{fs::RelativePath("tileData.ppm")}.path};
-    GEM_ASSERT(out);
-    out << img;
+    writePPM(img, data);
+    fs::write(img, fs::AbsolutePath{fs::RelativePath("bgMap.ppm")});
 }
 
 }  // namespace gem

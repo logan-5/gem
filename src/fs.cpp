@@ -1,6 +1,8 @@
 #include "fs.hpp"
 #include "gem_config.hpp"
 
+#include <fstream>
+
 namespace gem {
 namespace util {
 template <typename String>
@@ -39,3 +41,9 @@ std::string makeAbsolute(std::string_view rel) {
 
 gem::fs::AbsolutePath::AbsolutePath(RelativePathView rv)
     : path{makeAbsolute(rv.path)} {}
+
+void gem::fs::write(std::string_view data, const AbsolutePath& outPath) {
+    std::ofstream out{outPath.path};
+    GEM_ASSERT(out);
+    out << data;
+}
