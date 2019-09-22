@@ -29,7 +29,7 @@ u8* IO::writableRegisterPtr(const u16 address) {
 bool IO::consumeWrite(const u16 address, const u8 value) {
     switch (address) {
         case Registers::P1:
-            this->p1 = value | 0x0F;
+            this->p1 = value | 0xCF;
             return true;
         case Registers::SB:
             this->sb = value;

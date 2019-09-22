@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 #ifndef NDEBUG
 #define GEM_ENABLE_ASSERTS true
@@ -45,6 +46,15 @@
     } while (false)
 #endif
 
+#ifndef NDEBUG
+#include <csignal>
+#define GEM_BREAKPOINT() std::raise(SIGTRAP)
+#else
+#define GEM_BREAKPOINT() \
+    do {                 \
+    } while (false)
+#endif
+
 namespace gem {
 
 using u8 = std::uint8_t;
@@ -63,7 +73,8 @@ template <std::size_t Size>
 struct TinyString {
     constexpr TinyString() { buf[Size] = '\0'; }
 
-    template <std::size_t BufSize, typename = std::enable_if_t<BufSize <= Size + 1>>
+    template <std::size_t BufSize,
+              typename = std::enable_if_t<BufSize <= Size + 1>>
     TinyString(const char (&buffer)[BufSize]) {
         std::memcpy(this->buf.data(), buffer, BufSize);
     }
@@ -132,6 +143,21 @@ constexpr inline gem::TinyString<4> hexString(const u16 val) {
     ret[3] = detail::hexLookup[(val >> 0) & 0xF];
     return ret;
 }
+
+template <typename T>
+class FlatSet {
+   public:
+    FlatSet() = default;
+    FlatSet(std::vector<T> ts) : storage{std::move(ts)} {
+        std::sort(storage.begin(), storage.end());
+    }
+    bool contains(const T& t) const {
+        return std::binary_search(storage.begin(), storage.end(), t);
+    }
+
+   private:
+    std::vector<T> storage;
+};
 
 }  // namespace gem
 

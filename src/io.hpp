@@ -25,7 +25,7 @@ struct IO {
     void update();
 
    private:
-    u8 p1{0x3F};
+    u8 p1{0xFF};
     u8 sb;
 
     std::array<u8, RegisterRange::End - RegisterRange::Start> blob;

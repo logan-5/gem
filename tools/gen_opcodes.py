@@ -62,7 +62,7 @@ namespace {{ constexpr bool verbosePrint() {{ return false; }} }}
 
 gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
     if (verbosePrint()) {{
-        GEM_DEBUG_LOG("running opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(u16(cpu.reg.getPC()-1))
+        GEM_DEBUG_LOG("about to run opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(u16(cpu.reg.getPC()-1))
             << "\\n    AF: " << hexString(cpu.reg.getAF())
             << "\\n    BC: " << hexString(cpu.reg.getBC())
             << "\\n    DE: " << hexString(cpu.reg.getDE())
@@ -74,6 +74,11 @@ gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
                 << ", H: " << cpu.reg.flags.getH()
                 << ", C: " << cpu.reg.flags.getC());
     }}
+#ifndef NDEBUG
+    if (op::pcBreakpoints.contains(cpu.reg.getPC() - 1)) {{
+        GEM_BREAKPOINT();
+    }}
+#endif
     switch (opcode) {{
         {runners}
     }}

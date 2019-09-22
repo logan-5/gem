@@ -14,6 +14,9 @@ DeltaTicks runOpcode(u8 opcode, CPU& cpu);
 #if GEM_DEBUG_LOGGING
 void enableVerbosePrinting();
 void disableVerbosePrinting();
+
+inline FlatSet<u16> pcBreakpoints;
+
 #else
 inline void enableVerbosePrinting() {}
 inline void disableVerbosePrinting() {}
