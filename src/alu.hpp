@@ -230,9 +230,26 @@ inline void dec(u8& operand, CPU& cpu) {
 }
 
 inline void decimalAdjust(u8& operand, CPU& cpu) {
-    (void)operand;
-    (void)cpu;
-    GEM_ASSERT(false);
+    // in theory this would've been fun to figure out how to implement alone,
+    // but it's so full of poorly-documented gotchas that it would have been a
+    // huge and depressing time waste. this implementation is heavily
+    // paraphrased from here: https://ehaskins.com/2018-01-30%20Z80%20DAA/
+    u8 correction = 0;
+    bool setC = false;
+
+    if (cpu.reg.flags.getH() ||
+        (!cpu.reg.flags.getN() && (operand & 0xF) > 9)) {
+        correction |= 6;
+    }
+    if (cpu.reg.flags.getC() || (!cpu.reg.flags.getN() && operand > 0x99)) {
+        correction |= 6 << 4;
+        setC = true;
+    }
+    operand += cpu.reg.flags.getN() ? -correction : correction;
+
+    operand == 0 ? cpu.reg.flags.setZ() : cpu.reg.flags.resetZ();
+    cpu.reg.flags.resetH();
+    setC ? cpu.reg.flags.setC() : cpu.reg.flags.resetC();
 }
 
 inline void complement(u8& operand, CPU& cpu) {
