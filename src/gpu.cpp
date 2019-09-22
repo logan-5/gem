@@ -356,10 +356,10 @@ void GPU::renderScanLine() {
     const TileMap tileMap = getTileMap(this->lcdc);
     const TileSet tileSet = getTileSet(this->lcdc);
     const u16 mapStart = getMapStart(tileMap);
-    const u16 yOffset = this->scrollY + this->currentLine;
+    const u16 yOffset = (this->scrollY + this->currentLine) % 256;
 
     for (u16 i = 0; i < Screen::Width; ++i) {
-        const u16 xOffset = i + this->scrollX;
+        const u16 xOffset = (i + this->scrollX) % 256;
         const u16 idx = getTileMapIndex(xOffset, yOffset, mapStart);
         const u8 tileValue = index(vram, idx);
         const u16 tileAddress = getTileAddress(tileSet, tileValue);
@@ -409,7 +409,7 @@ void GPU::renderScanLine() {
         }
     }
 
-    this->screen.get().renderLine(line, yOffset);
+    this->screen.get().renderLine(line, currentLine);
 }
 
 bool GPU::lcdEnabled() const {
