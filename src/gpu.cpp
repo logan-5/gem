@@ -114,15 +114,71 @@ void GPU::step(DeltaTicks deltaTicks) {
               },
               mode)) {
         mode = *std::move(nextMode);
+        updateSTAT();
     }
+}
+
+void GPU::updateSTAT() {
+    using namespace bitwise;
+    const u8 modeBits = std::visit(
+          [](auto& m) -> u8 { return std::decay_t<decltype(m)>::Number; },
+          mode);
+    u8 newStat = 0b1000'0000;  // bit 7 always 1
+    const bool bit2 = currentLine == lyc;
+    if (bit2) {
+        set<2>(newStat);
+    }
+    if (lcdEnabled()) {
+        newStat |= modeBits;
+    }
+
+    newStat |= stat & 0b0111'1000;
+
+    stat = newStat;
+
+    bool newStatSignal = [&] {
+        if (!lcdEnabled())
+            return false;
+
+        const bool enableLYCCompare = test<6>(stat);
+        if (enableLYCCompare && bit2) {
+            return true;
+        }
+        const bool enableHBlankCheck = test<3>(stat);
+        if (enableHBlankCheck && modeBits == Mode_HBlank::Number) {
+            return true;
+        }
+        const bool enableOAMCheck = test<5>(stat);
+        if (enableOAMCheck && modeBits == Mode_ScanlineOAM::Number) {
+            return true;
+        }
+        const bool enableVBlankCheck = test<4>(stat);
+        if ((enableVBlankCheck || enableOAMCheck) &&
+            modeBits == Mode_VBlank::Number) {
+            return true;
+        }
+        return false;
+    }();
+    if (newStatSignal && !statSignal) {
+        mem->interruptFlags.fireStat();
+    }
+    statSignal = newStatSignal;
 }
 
 GPU::Mode GPU::Mode_HBlank::nextMode(GPU& gpu) {
     ++gpu.currentLine;
     if (gpu.currentLine == Screen::Height) {
-        return Mode_VBlank{};
+        return Mode_VBlank{gpu};
     }
     return Mode_ScanlineOAM{};
+}
+
+GPU::Mode_VBlank::Mode_VBlank(GPU& gpu) {
+    GEM_ASSERT(gpu.mem != nullptr);
+    if (gpu.lcdEnabled()) {
+        gpu.mem->interruptFlags.fireVBlank();
+    }
+    gpu.screen.get().vblank();
 }
 void GPU::Mode_VBlank::step(GPU& gpu) {
     // VBlank takes the same amount of time as 10 scanlines including HBlank
@@ -138,9 +194,6 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
     }
 }
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
-    gpu.screen.get().vblank();
-    GEM_ASSERT(gpu.mem != nullptr);
-    gpu.mem->interruptFlags.fireVBlank();
     GEM_ASSERT(gpu.currentLine == 154);
     gpu.currentLine = 0;
     return Mode_ScanlineOAM{};
@@ -169,6 +222,10 @@ u8* GPU::registerPtr(const u16 address) {
             return &this->lcdc;
         case Registers::LY:
             return &this->currentLine;
+        case Registers::STAT:
+            return &this->stat;
+        case Registers::LYC:
+            return &this->lyc;
         // TODO add more
         default:
             return garbage.data();
@@ -291,6 +348,9 @@ Color pixelFromColorCode(const GPU::ColorCode cc) {
 }  // namespace
 
 void GPU::renderScanLine() {
+    if (!lcdEnabled())
+        return;
+
     std::array<u8, Screen::Width * Color::size()> line;
 
     const TileMap tileMap = getTileMap(this->lcdc);
@@ -352,8 +412,12 @@ void GPU::renderScanLine() {
     this->screen.get().renderLine(line, yOffset);
 }
 
+bool GPU::lcdEnabled() const {
+    return bitwise::test<7>(lcdc);
+}
+
 bool GPU::spritesEnabled() const {
-    return true;  // bitwise::test<1>(lcdc);
+    return bitwise::test<1>(lcdc);
 }
 
 std::vector<usize> GPU::findSpritesIntersectingCurrentLine() {

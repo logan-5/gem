@@ -18,9 +18,11 @@ struct GPU {
         SCROLLX = 0xFF43,
         SCROLLY = 0xFF42,
         LCDC = 0xFF40,
+        STAT = 0xFF41,
         WNDPOSX = 0xFF4B,
         WNDPOSY = 0xFF4A,
         LY = 0xFF44,
+        LYC = 0xFF45,
     };
 
     enum : u16 {
@@ -131,8 +133,12 @@ struct GPU {
 
     void step(DeltaTicks deltaTicks);
 
+    void updateSTAT();
+
+    bool lcdEnabled() const;
     bool spritesEnabled() const;
-	std::vector<usize> findSpritesIntersectingCurrentLine();
+
+    std::vector<usize> findSpritesIntersectingCurrentLine();
 
    private:
     std::reference_wrapper<Screen> screen;
@@ -147,8 +153,8 @@ struct GPU {
         Ticks timer = 0;
     };
     struct Mode_ScanlineOAM final : Mode_Base {
-        enum {
-            Number = 2,
+        enum : u8 {
+            Number = 0b10,
         };
         enum : Ticks {
             Time = 80,
@@ -157,8 +163,8 @@ struct GPU {
         static Mode nextMode(const GPU& gpu);
     };
     struct Mode_ScanlineVRAM final : Mode_Base {
-        enum {
-            Number = 3,
+        enum : u8 {
+            Number = 0b11,
         };
         enum : Ticks {
             Time = 172,
@@ -167,8 +173,8 @@ struct GPU {
         static Mode nextMode(GPU& gpu);
     };
     struct Mode_HBlank final : Mode_Base {
-        enum {
-            Number = 0,
+        enum : u8 {
+            Number = 0b00,
         };
         enum : Ticks {
             Time = 204,
@@ -177,14 +183,16 @@ struct GPU {
         static Mode nextMode(GPU& gpu);
     };
     struct Mode_VBlank final : Mode_Base {
-        enum {
-            Number = 1,
+        enum : u8 {
+            Number = 0b01,
         };
         enum : Ticks {
             Time = 4560,
         };
         void step(GPU&);
         static Mode nextMode(GPU& gpu);
+
+        explicit Mode_VBlank(GPU& gpu);
 
        private:
         u8 stepTimer = 0;
@@ -203,6 +211,9 @@ struct GPU {
     u8 lcdc = 0;
     u8 scrollX = 0;
     u8 scrollY = 0;
+    u8 stat = 0;
+    u8 lyc = 0;
+    bool statSignal = false;
 
     using CachedTile = Tile;
     CachedTile loadCachedTile(u16 address) const;
