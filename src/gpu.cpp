@@ -490,8 +490,16 @@ std::vector<usize> GPU::findSpritesIntersectingCurrentLine() {
         const auto top = static_cast<int>(oam->screenPosYPlus16) - 16;
         if (top <= this->currentLine && this->currentLine < top + 8) {
             intersectingIndices.push_back(i);
+            if (intersectingIndices.size() >= 10) {
+                break;
+            }
         }
     }
+    std::sort(intersectingIndices.begin(), intersectingIndices.end(),
+              [&](const usize a, const usize b) {
+                  return assert_unwrap(cachedSprites[a]).screenPosXPlus8 <
+                         assert_unwrap(cachedSprites[b]).screenPosXPlus8;
+              });
     return intersectingIndices;
 }
 
