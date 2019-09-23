@@ -436,8 +436,11 @@ void GPU::renderScanLine() {
                 tile = loadCachedTile(oam.tileNumber * Tile::MemSize);
             }
 
-            const auto pixelRow =
-                  currentLine - (static_cast<int>(oam.screenPosYPlus16) - 16);
+            const auto pixelRow = [&] {
+                const auto row = currentLine -
+                                 (static_cast<int>(oam.screenPosYPlus16) - 16);
+                return oam.yFlip ? (Tile::Height - row - 1) : row;
+            }();
             GEM_ASSERT(pixelRow < Tile::Height);
             const int leftEdge = static_cast<int>(oam.screenPosXPlus8) - 8;
 
@@ -445,8 +448,12 @@ void GPU::renderScanLine() {
                  i < std::min(leftEdge + Tile::Width,
                               static_cast<int>(Screen::Width));
                  ++i) {
+                const auto pixelColumn = [&] {
+                    const auto col = i - leftEdge;
+                    return oam.xFlip ? (Tile::Width - col - 1) : col;
+                }();
                 const ColorCode pixelCC = tile->pixels[static_cast<usize>(
-                      (i - leftEdge) + pixelRow * Tile::Height)];
+                      pixelColumn + pixelRow * Tile::Height)];
                 const auto pixel = spritePixelFromColorCode(
                       pixelCC, oam.palette == Palette::_0 ? obp0 : obp1);
 
@@ -454,7 +461,7 @@ void GPU::renderScanLine() {
                     u8* const dest =
                           line.begin() + static_cast<usize>(i) * Color::size();
                     if (oam.priority == Priority::Front ||
-                        (Colors::Transparent == dest)) {
+                        (bgPixelFromColorCode(ColorCode::C00, bgp) == dest)) {
                         std::copy_n(pixel.begin(), pixel.size(), dest);
                     }
                 }
