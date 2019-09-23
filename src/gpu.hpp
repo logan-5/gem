@@ -24,6 +24,11 @@ struct GPU {
         LY = 0xFF44,
         LYC = 0xFF45,
         DMA = 0xFF46,
+
+        // palettes
+        BGP = 0xFF47,
+        OBP0 = 0xFF48,
+        OBP1 = 0xFF49,
     };
 
     enum : u16 {
@@ -84,6 +89,16 @@ struct GPU {
 
         static constexpr auto size() noexcept {
             return std::tuple_size_v<decltype(storage)>;
+        }
+
+        bool operator==(Color other) const noexcept {
+            return storage == other.storage;
+        }
+        bool operator!=(Color other) const noexcept {
+            return !(*this == other);
+        }
+        bool operator==(const u8* buf) const noexcept {
+            return std::memcmp(storage.data(), buf, storage.size()) == 0;
         }
 
        private:
@@ -217,6 +232,9 @@ struct GPU {
     u8 lyc = 0;
     bool statSignal = false;
     u8 dma = 0;
+    u8 bgp = 0;
+    u8 obp0 = 0;
+    u8 obp1 = 0;
 
     using CachedTile = Tile;
     CachedTile loadCachedTile(u16 address) const;

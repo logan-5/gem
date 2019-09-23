@@ -28,6 +28,7 @@ constexpr auto Black = 0xFF000000_argb;
 constexpr auto DarkGray = 0xFF555555_argb;
 constexpr auto LightGray = 0xFFAAAAAA_argb;
 constexpr auto White = 0xFFFFFFFF_argb;
+constexpr auto Transparent = 0x00000000_argb;
 };  // namespace Colors
 }  // namespace
 
@@ -222,6 +223,12 @@ u8* GPU::registerPtr(const u16 address) {
             return &this->lyc;
         case Registers::DMA:
             return &this->dma;
+        case Registers::BGP:
+            return &this->bgp;
+        case Registers::OBP0:
+            return &this->obp0;
+        case Registers::OBP1:
+            return &this->obp1;
         // TODO add more
         default:
             return garbage.data();
@@ -344,17 +351,44 @@ u16 getTileMapIndex(const u16 offsetX, const u16 offsetY, const u16 mapStart) {
     return mapStart + idx;
 }
 
-Color pixelFromColorCode(const GPU::ColorCode cc) {
-    switch (cc) {
-        case GPU::ColorCode::C00:
+constexpr Color bgColorFromTwoBits(const u8 bits) {
+    GEM_ASSERT((bits & 0b11) == bits);
+    switch (bits) {
+        case 0b00:
             return Colors::White;
-        case GPU::ColorCode::C10:
-            return Colors::DarkGray;
-        case GPU::ColorCode::C01:
+        case 0b01:
             return Colors::LightGray;
-        case GPU::ColorCode::C11:
+        case 0b10:
+            return Colors::DarkGray;
+        case 0b11:
             return Colors::Black;
     }
+    GEM_UNREACHABLE();
+}
+
+template <bool BG>
+constexpr Color pixelFromColorCodeImpl(const GPU::ColorCode c, const u8 pal) {
+    switch (c) {
+        case GPU::ColorCode::C00:
+            return BG ? bgColorFromTwoBits((pal & 0b0000'0011) >> 0u)
+                      : Colors::Transparent;
+        case GPU::ColorCode::C01:
+            return bgColorFromTwoBits((pal & 0b0000'1100) >> 2u);
+        case GPU::ColorCode::C10:
+            return bgColorFromTwoBits((pal & 0b0011'0000) >> 4u);
+        case GPU::ColorCode::C11:
+            return bgColorFromTwoBits((pal & 0b1100'0000) >> 6u);
+    }
+    GEM_UNREACHABLE();
+}
+
+constexpr Color bgPixelFromColorCode(const GPU::ColorCode c, const u8 bgp) {
+    return pixelFromColorCodeImpl<true>(c, bgp);
+}
+
+constexpr Color spritePixelFromColorCode(const GPU::ColorCode c,
+                                         const u8 palette) {
+    return pixelFromColorCodeImpl<false>(c, palette);
 }
 
 }  // namespace
@@ -386,7 +420,7 @@ void GPU::renderScanLine() {
 
         const ColorCode pixelCC =
               tile->pixels[pixelColumn + pixelRow * GPU::Tile::Width];
-        const auto pixel = pixelFromColorCode(pixelCC);
+        const auto pixel = bgPixelFromColorCode(pixelCC, bgp);
 
         std::copy_n(pixel.begin(), pixel.size(),
                     line.begin() + i * Color::size());
@@ -413,10 +447,17 @@ void GPU::renderScanLine() {
                  ++i) {
                 const ColorCode pixelCC = tile->pixels[static_cast<usize>(
                       (i - leftEdge) + pixelRow * Tile::Height)];
-                const auto pixel = pixelFromColorCode(pixelCC);
-                std::copy_n(
-                      pixel.begin(), pixel.size(),
-                      line.begin() + static_cast<usize>(i) * Color::size());
+                const auto pixel = spritePixelFromColorCode(
+                      pixelCC, oam.palette == Palette::_0 ? obp0 : obp1);
+
+                if (pixel != Colors::Transparent) {
+                    u8* const dest =
+                          line.begin() + static_cast<usize>(i) * Color::size();
+                    if (oam.priority == Priority::Front ||
+                        (Colors::Transparent == dest)) {
+                        std::copy_n(pixel.begin(), pixel.size(), dest);
+                    }
+                }
             }
         }
     }
@@ -498,7 +539,7 @@ void GPU::dumpTileMemory() {
 
                 const ColorCode pixelCC =
                       tile->pixels[c + r * GPU::Tile::Width];
-                const auto pixel = pixelFromColorCode(pixelCC);
+                const auto pixel = bgPixelFromColorCode(pixelCC, bgp);
 
                 std::copy_n(pixel.begin(), bytesPerPixel, data.data() + index);
             }
@@ -539,7 +580,7 @@ void GPU::dumpBackgroundMap(TileMap map) {
 
             const ColorCode pixelCC =
                   tile->pixels[pixelColumn + pixelRow * GPU::Tile::Width];
-            const auto pixel = pixelFromColorCode(pixelCC);
+            const auto pixel = bgPixelFromColorCode(pixelCC, bgp);
 
             const auto index = (c + r * imageWidth) * bytesPerPixel;
             std::copy_n(pixel.begin(), bytesPerPixel, data.begin() + index);
