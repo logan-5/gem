@@ -136,7 +136,7 @@ struct CPU {
     Mem& bus;
 
     void execute() {
-        if (!halted) {
+        if (!stopped && !halted) {
             deltaTicks = op::runOpcode(readPC(), *this);
             ticks += deltaTicks;
         }
@@ -179,6 +179,9 @@ struct CPU {
     void returnFromInterrupt();
     u8 getPendingInterrupts() const;
     void halt();
+    void stop() {
+        stopped = true;  // TODO turn off screen?
+    }
 
    private:
     Ticks ticks = 0;
@@ -187,6 +190,7 @@ struct CPU {
     bool pendingIME = false;
     bool halted = false;
     bool haltBug = false;
+    bool stopped = false;
 };
 
 }  // namespace gem

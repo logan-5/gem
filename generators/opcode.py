@@ -762,6 +762,7 @@ Opcode('EI', '0xFB', 0, 4, 'cpu.ei();', False)
 Opcode('RETI', '0xD9', 0, 8, 'cpu.returnFromInterrupt();', False)
 
 Opcode('HALT', '0x76', 0, 4, 'cpu.halt();', False)
+Opcode('STOP', '0x10', 0, 4, 'cpu.stop();', False)
 
 # tools for adding new opcodes
 

@@ -69,6 +69,7 @@ void CPU::processInterrupts() {
         ((bus.interruptFlags.getMasked()) != 0)) {
         if (const u8 interruptsThatOccurred = getPendingInterrupts()) {
             halted = false;
+            stopped = false;
             if (ime) {
                 const auto& interrupts = Interrupt::bitAndHandlerPairs;
                 for (auto& bhp : interrupts) {
