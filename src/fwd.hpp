@@ -172,6 +172,11 @@ class FlatSet {
         return std::binary_search(storage.begin(), storage.end(), t);
     }
 
+    void insert(T t) {
+        auto pos = std::lower_bound(storage.begin(), storage.end(), t);
+        storage.insert(pos, std::move(t));
+    }
+
    private:
     std::vector<T> storage;
 };

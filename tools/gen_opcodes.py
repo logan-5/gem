@@ -55,14 +55,15 @@ void gem::op::enableVerbosePrinting() {{
 void gem::op::disableVerbosePrinting() {{
     ::verbosePrintState = false;
 }}
-namespace {{ bool verbosePrint() {{ return ::verbosePrintState; }} }}
+namespace {{ bool doVerbosePrint() {{ return ::verbosePrintState; }} }}
 # else
-namespace {{ constexpr bool verbosePrint() {{ return false; }} }}
+namespace {{ constexpr bool doVerbosePrint() {{ return false; }} }}
 # endif
 
-gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
-    if (verbosePrint()) {{
-        GEM_DEBUG_LOG("about to run opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(u16(cpu.reg.getPC()-1))
+namespace {{
+void verbosePrint(const gem::u8 opcode, gem::CPU& cpu) {{
+    using namespace gem;
+    GEM_DEBUG_LOG("about to run opcode: " << getOpcodeDescription(opcode, cpu) << " at PC: " << hexString(u16(cpu.reg.getPC()-1))
             << "\\n    AF: " << hexString(cpu.reg.getAF())
             << "\\n    BC: " << hexString(cpu.reg.getBC())
             << "\\n    DE: " << hexString(cpu.reg.getDE())
@@ -73,6 +74,12 @@ gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
                 << ", N: " << cpu.reg.flags.getN()
                 << ", H: " << cpu.reg.flags.getH()
                 << ", C: " << cpu.reg.flags.getC());
+}}
+}}
+
+gem::DeltaTicks gem::op::runOpcode(const gem::u8 opcode, gem::CPU& cpu) {{
+    if (doVerbosePrint()) {{
+        verbosePrint(opcode, cpu);
     }}
 #ifndef NDEBUG
     if (op::pcBreakpoints.contains(cpu.reg.getPC() - 1)) {{

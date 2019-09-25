@@ -17,14 +17,17 @@ overloaded(Fs...)->overloaded<Fs...>;
 constexpr std::array<u8, 2> ones{{0xFF, 0xFF}};
 std::array<u8, 2> garbage{{0x00, 0x00}};
 
-MBC::Mode getMode(u8 mbcSelector) {
+MBC::Mode getMode(const u8 mbcSelector) {
     switch (mbcSelector) {
-        case 0:
+        case 0x0:
             return MBCMode::None{};
-        case 1:
-        case 2:
-        case 3:
+        case 0x1:
+        case 0x2:
+        case 0x3:
             return MBCMode::MBC1{};
+        case 0x12:
+        case 0x13:
+            return MBCMode::MBC3{};
     }
     throw std::runtime_error{"unsupported MBC type :("};
 }
@@ -36,6 +39,7 @@ usize ramSize(const MBC::Mode& m) {
     return std::visit(overloaded{
                             [](None) { return eightK; },
                             [](const MBC1&) { return eightK * 4; },
+                            [](const MBC3&) { return eightK * 8; },
                       },
                       m);
 }
@@ -87,6 +91,11 @@ struct MBC::GetPtr {
                                u8((m.quuxMode == MBC1::QuuxMode::RAM) - 1));
                         return mbc.rom.data() + (address - 0x4000) +
                                romBank * 0x4000;
+                    },
+                    [&](const MBC3& m) {
+                        const usize romBank = m.romBankLower7;
+                        return mbc.rom.data() + (address - 0x4000) +
+                               romBank * 0x4000;
                     }},
               mbc.mode);
     }
@@ -94,19 +103,28 @@ struct MBC::GetPtr {
     Ptr getExternalRam(MBCRef mbc, const u16 address) const {
         GEM_ASSERT(mbc.ramEnabled());
         using namespace MBCMode;
-        return mbc.externalRam.data() + address +
-               std::visit(
-                     overloaded{[](None) { return usize{0}; },
-                                [](const MBC1& m) {
-                                    const usize ramBank =
-                                          0x2000 *
-                                          (m.quux & u8((m.quuxMode ==
-                                                        MBC1::QuuxMode::ROM) -
-                                                       1));
-                                    return ramBank;
-                                }},
-                     mbc.mode) -
-               0xA000;
+        return std::visit(
+              overloaded{
+                    [&](None) {
+                        return mbc.externalRam.data() + address - 0xA000;
+                    },
+                    [&](const MBC1& m) {
+                        const usize ramBank =
+                              0x2000 *
+                              (m.quux &
+                               u8((m.quuxMode == MBC1::QuuxMode::ROM) - 1));
+                        return mbc.externalRam.data() +
+                               (ramBank + address - 0xA000);
+                    },
+                    [&](Ref<MBC3>& m) {
+                        if (m.ramOrRTC >= 0x08) {
+                            return m.rtcRegisters.data() + (m.ramOrRTC - 0x08);
+                        }
+                        const usize ramBank = 0x2000 * m.ramOrRTC;
+                        return mbc.externalRam.data() +
+                               (ramBank + address - 0xA000);
+                    }},
+              mbc.mode);
     }
 };
 
@@ -125,7 +143,7 @@ bool MBC::consumeWrite(const u16 address, const u8 value) {
           overloaded{[](None) { return false; },
                      [&](MBC1& m) {
                          if (address <= 0x1FFF) {
-                             m.ramEnabled = (address & 0x0F) == 0x0A;
+                             m.ramEnabled = (value & 0x0F) == 0x0A;
                              return true;
                          }
                          if (0x2000 <= address && address <= 0x3FFF) {
@@ -142,14 +160,36 @@ bool MBC::consumeWrite(const u16 address, const u8 value) {
                              return true;
                          }
                          return false;
+                     },
+                     [&](MBC3& m) {
+                         if (address <= 0x1FFF) {
+                             m.ramRTCEnabled = (value & 0x0F) == 0x0A;
+                             return true;
+                         }
+                         if (0x2000 <= address && address <= 0x3FFF) {
+                             m.romBankLower7 = (value & 0x7F) + (value == 0x00);
+                             return true;
+                         }
+                         if (0x4000 <= address && address <= 0x5FFF) {
+                             m.ramOrRTC = value;
+                             return true;
+                         }
+                         if (0x6000 <= address && address <= 0x7FFF) {
+                             // TODO latch clock data
+                             return true;
+                         }
+                         return false;
                      }},
           mode);
 }
 
 bool MBC::ramEnabled() const {
     using namespace MBCMode;
-    return std::visit(overloaded{[](None) { return true; },
-                                 [](const MBC1& m) { return m.ramEnabled; }},
+    return std::visit(overloaded{
+                            [](None) { return true; },
+                            [](const MBC1& m) { return m.ramEnabled; },
+                            [](const MBC3& m) { return m.ramRTCEnabled; },
+                      },
                       mode);
 }
 

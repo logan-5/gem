@@ -18,6 +18,13 @@ struct MBC1 {
         RAM,
     } quuxMode = QuuxMode::ROM;
 };
+struct MBC3 {
+    bool ramRTCEnabled = false;
+    u8 romBankLower7 = 0x01;
+    u8 ramOrRTC = 0x00;
+    // u8 latchData = 0x00; // somewhat punting on full RTC support here
+    std::array<u8, 5> rtcRegisters = {};
+};
 }  // namespace MBCMode
 
 struct MBC {
@@ -25,7 +32,7 @@ struct MBC {
         Selector = 0x0147,
     };
 
-    using Mode = std::variant<MBCMode::None, MBCMode::MBC1>;
+    using Mode = std::variant<MBCMode::None, MBCMode::MBC1, MBCMode::MBC3>;
 
     explicit MBC(std::vector<u8> rom);
 
