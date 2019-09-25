@@ -4,6 +4,7 @@
 #include "fwd.hpp"
 
 #include "interrupt.hpp"
+#include "mbc.hpp"
 
 #include <vector>
 
@@ -13,6 +14,10 @@ struct GPU;
 struct IO;
 
 struct Mem {
+    enum : u16 {
+        MBCSelector = 0x0147,
+    };
+
     using Block = std::vector<u8>;
 
     explicit Mem(Block rom, GPU& gpu, IO& io);
@@ -40,12 +45,12 @@ struct Mem {
     friend struct GetPtr;
     u8* mut_ptr(u16 address);
 
+    MBC mbc;
+
     Block zeroPage;
-    Block ROM;
     Block bootstrap;
     GPU& gpu;
     IO& io;
-    Block externalRam;
     Block workingRam;
 };
 

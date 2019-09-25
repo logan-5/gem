@@ -15,12 +15,11 @@ std::array<gem::u8, 2> garbage{0x00, 0x00};
 namespace gem {
 
 Mem::Mem(Block rom, GPU& gpu, IO& io)
-    : zeroPage(makeBlock<0xFF80, 0xFFFF>())
-    , ROM(makeBlock<0x00, 0x3FFF>(std::move(rom)))
+    : mbc{std::move(rom)}
+    , zeroPage(makeBlock<0xFF80, 0xFFFF>())
     , bootstrap(::gem::loadBootstrapROM())
     , gpu{gpu}
     , io{io}
-    , externalRam(makeBlock<0xA000, 0xBFFF>())
     , workingRam(makeBlock<0xC000, 0xDFFF>()) {}
 
 u8 Mem::read(u16 address) const {
@@ -28,8 +27,9 @@ u8 Mem::read(u16 address) const {
 }
 
 void Mem::write(u16 address, u8 value) {
-    const bool consumed =
-          io.consumeWrite(address, value) || gpu.consumeWrite(address, value);
+    const bool consumed = mbc.consumeWrite(address, value) ||
+                          io.consumeWrite(address, value) ||
+                          gpu.consumeWrite(address, value);
     if (!consumed) {
         *mut_ptr(address) = value;
     }
@@ -53,13 +53,11 @@ struct GetPtr {
             case 0x3000:
             case 0x2000:
             case 0x1000:
-                return mem.ROM.data() + address;
-
             case 0x4000:
             case 0x5000:
             case 0x6000:
             case 0x7000:
-                return mem.ROM.data() + address;
+                return mem.mbc.ptr(address);
 
             case 0x8000:
             case 0x9000:
@@ -71,7 +69,7 @@ struct GetPtr {
 
             case 0xA000:
             case 0xB000:
-                return mem.externalRam.data() + (address - 0xA000);
+                return mem.mbc.ptr(address);
 
             case 0xC000:
             case 0xD000:
