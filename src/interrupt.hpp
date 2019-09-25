@@ -46,12 +46,6 @@ struct InterruptCommon {
     bool serial() const noexcept { return test<idx(Bit::Serial)>(); }
     bool joypad() const noexcept { return test<idx(Bit::Joypad)>(); }
 
-    void fireVBlank() noexcept { set<idx(Bit::VBlank)>(); }
-    void fireStat() noexcept { set<idx(Bit::STAT)>(); }
-    void fireTimer() noexcept { set<idx(Bit::Timer)>(); }
-    void fireSerial() noexcept { set<idx(Bit::Serial)>(); }
-    void fireJoypad() noexcept { set<idx(Bit::Joypad)>(); }
-
     const u8* valPtr() const {
         I::adjustVal(val);
         return &val;
@@ -68,7 +62,7 @@ struct InterruptCommon {
 
     mutable u8 val = 0x00;
 
-   private:
+   protected:
     template <unsigned Bit>
     bool test() const noexcept {
         return bitwise::test<Bit>(val);
@@ -83,6 +77,12 @@ struct InterruptEnabledRegister : InterruptCommon<InterruptEnabledRegister> {
 };
 struct InterruptFlagsRegister : InterruptCommon<InterruptFlagsRegister> {
     static constexpr void adjustVal(u8& val) { val |= 0b1110'0000; }
+
+    void fireVBlank() noexcept { set<idx(Bit::VBlank)>(); }
+    void fireStat() noexcept { set<idx(Bit::STAT)>(); }
+    void fireTimer() noexcept { set<idx(Bit::Timer)>(); }
+    void fireSerial() noexcept { set<idx(Bit::Serial)>(); }
+    void fireJoypad() noexcept { set<idx(Bit::Joypad)>(); }
 };
 }  // namespace Interrupt
 }  // namespace gem
