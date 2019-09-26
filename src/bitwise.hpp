@@ -30,7 +30,7 @@ inline constexpr bool test(const u8 b, unsigned bit) {
     return (b >> bit) & 1;
 }
 template <unsigned Bit>
-bool test(const u8 b) {
+constexpr bool test(const u8 b) {
     return test(b, Bit);
 }
 }  // namespace bitwise

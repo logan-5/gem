@@ -44,18 +44,18 @@ struct GPU {
         TileMap1Start = 0x9C00,
         TileMap1End = 0xA000,
 
+        WindowMap0Start = 0x9800,
+        WindowMap0End = 0x9BFF,
+        WindowMap1Start = 0x9C00,
+        WindowMap1End = 0x9FFF,
+
         SpriteTableStart = 0x8000,
         SpriteTableEnd = 0x9000,
     };
 
-    enum class TileSet : u8 {
-        _0,
-        _1,
-    };
-    enum class TileMap : u8 {
-        _0,
-        _1,
-    };
+    enum class TileSet : u8 { _0, _1 };
+    enum class TileMap : u8 { _0, _1 };
+    enum class WindowTileMap : u8 { _0, _1 };
     enum class Palette : u8 { _0, _1 };
     enum class Priority : u8 { Front, Behind };
 
@@ -116,10 +116,6 @@ struct GPU {
         static constexpr u8 Width = 8, Height = 8;
         static constexpr u8 MemSize = 2 * Height;
         std::array<ColorCode, Width * Height> pixels;
-
-#ifndef NDEBUG
-        void dump() const;
-#endif
     };
 
     explicit GPU(Screen& screen);
@@ -154,6 +150,7 @@ struct GPU {
 
     bool lcdEnabled() const;
     bool spritesEnabled() const;
+    bool windowEnabled() const;
 
     std::vector<usize> findSpritesIntersectingCurrentLine();
 
@@ -235,6 +232,13 @@ struct GPU {
     u8 bgp = 0;
     u8 obp0 = 0;
     u8 obp1 = 0;
+
+    u8 wx = 0;
+    u8 wy = 0;
+
+    // set once from WY at the beginning of each screen draw
+    u8 currentWindowY = 0;
+    u8 windowLine = 0;
 
     using CachedTile = Tile;
     CachedTile loadCachedTile(u16 address) const;

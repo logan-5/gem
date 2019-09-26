@@ -58,6 +58,31 @@ void GPU::invalidateTileCacheForAddress(u16 address) {
 }
 
 namespace {
+char dumpChar(const GPU::ColorCode cc) {
+    using CC = GPU::ColorCode;
+    switch (cc) {
+        case CC::C00:
+            return '_';
+        case CC::C11:
+            return '#';
+        case CC::C01:
+            return '|';
+        case CC::C10:
+            return '*';
+    }
+    GEM_UNREACHABLE();
+}
+void dumpTile(const GPU::Tile& tile) {
+    using Tile = GPU::Tile;
+    for (usize i = 0; i < Tile::Width * Tile::Height; ++i) {
+        auto& cc = tile.pixels[i];
+        GEM_LOG_EXACTLY(dumpChar(cc));
+        if ((i + 1) % Tile::Width == 0) {
+            GEM_LOG_EXACTLY('\n');
+        }
+    }
+}
+
 GPU::OAM loadOAMFromPtr(const u8* data) {
     GPU::OAM oam;
     oam.screenPosYPlus16 = data[0];
@@ -191,6 +216,8 @@ void GPU::Mode_VBlank::step(GPU& gpu) {
 GPU::Mode GPU::Mode_VBlank::nextMode(GPU& gpu) {
     GEM_ASSERT(gpu.currentLine == 154);
     gpu.currentLine = 0;
+    gpu.currentWindowY = gpu.wy;
+    gpu.windowLine = 0;
     return Mode_ScanlineOAM{};
 }
 
@@ -229,6 +256,10 @@ u8* GPU::registerPtr(const u16 address) {
             return &this->obp0;
         case Registers::OBP1:
             return &this->obp1;
+        case Registers::WNDPOSX:
+            return &this->wx;
+        case Registers::WNDPOSY:
+            return &this->wy;
         // TODO add more
         default:
             return garbage.data();
@@ -351,6 +382,25 @@ u16 getTileMapIndex(const u16 offsetX, const u16 offsetY, const u16 mapStart) {
     return mapStart + idx;
 }
 
+constexpr GPU::WindowTileMap getWindowTileMap(const u8 lcdc) {
+    return bitwise::test<6>(lcdc) ? GPU::WindowTileMap::_1
+                                  : GPU::WindowTileMap::_0;
+}
+
+u16 getWindowTileMapStart(GPU::WindowTileMap map) {
+    const u16 start = [&] {
+        switch (map) {
+            case GPU::WindowTileMap::_0:
+                return GPU::WindowMap0Start;
+            case GPU::WindowTileMap::_1:
+                return GPU::WindowMap1Start;
+        }
+        GEM_UNREACHABLE();
+    }();
+    GEM_ASSERT(start > GPU::VideoRAMStart);
+    return start - GPU::VideoRAMStart;
+}
+
 constexpr Color bgColorFromTwoBits(const u8 bits) {
     GEM_ASSERT((bits & 0b11) == bits);
     switch (bits) {
@@ -383,6 +433,10 @@ constexpr Color pixelFromColorCodeImpl(const GPU::ColorCode c, const u8 pal) {
 }
 
 constexpr Color bgPixelFromColorCode(const GPU::ColorCode c, const u8 bgp) {
+    return pixelFromColorCodeImpl<true>(c, bgp);
+}
+
+constexpr Color windowPixelFromColorCode(const GPU::ColorCode c, const u8 bgp) {
     return pixelFromColorCodeImpl<true>(c, bgp);
 }
 
@@ -424,6 +478,39 @@ void GPU::renderScanLine() {
 
         std::copy_n(pixel.begin(), pixel.size(),
                     line.begin() + i * Color::size());
+    }
+
+    if (windowEnabled() && (currentWindowY <= currentLine &&
+                            currentLine < (currentWindowY + Screen::Height))) {
+        const auto absoluteWindowX = wx - 7;
+        const auto windowMap = getWindowTileMap(lcdc);
+        const auto windowMapStart = getWindowTileMapStart(windowMap);
+        const u16 windowMapRow = windowLine / Tile::Height;
+        const u16 windowTilePixelRow = windowLine % Tile::Height;
+        for (usize i = usize(std::max(0, absoluteWindowX)); i < Screen::Width;
+             ++i) {
+            const usize col = usize(int(i) - absoluteWindowX);
+            const auto windowMapCol = col / Tile::Width;
+            const auto windowTileIdx =
+                  windowMapStart + (windowMapCol + windowMapRow * 32);
+            const u8 tileValue = index(vram, windowTileIdx);
+            const u16 tileAddress = getTileAddress(tileSet, tileValue);
+
+            std::optional<Tile>& tile =
+                  index(cachedTiles, tileAddress / Tile::MemSize);
+            if (!tile) {
+                tile = loadCachedTile(tileAddress);
+            }
+
+            const auto pixelColumn = col % Tile::Width;
+            const ColorCode pixelCC = tile->pixels[static_cast<usize>(
+                  pixelColumn + windowTilePixelRow * Tile::Height)];
+            const auto pixel = windowPixelFromColorCode(pixelCC, bgp);
+
+            std::copy_n(pixel.begin(), pixel.size(),
+                        line.begin() + i * Color::size());
+        }
+        ++windowLine;
     }
 
     if (spritesEnabled()) {
@@ -478,6 +565,10 @@ bool GPU::lcdEnabled() const {
 
 bool GPU::spritesEnabled() const {
     return bitwise::test<1>(lcdc);
+}
+
+bool GPU::windowEnabled() const {
+    return bitwise::test<5>(lcdc) && (wx <= 166);
 }
 
 std::vector<usize> GPU::findSpritesIntersectingCurrentLine() {
