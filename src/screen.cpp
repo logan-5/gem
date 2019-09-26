@@ -49,8 +49,8 @@ struct Window::Impl {
     explicit Impl()
         : window{sf::VideoMode{Screen::Width * Scale, Screen::Height * Scale},
                  "gem"} {
-        // window.setFramerateLimit(60);
-        // window.setVerticalSyncEnabled(true);
+        window.setFramerateLimit(60);
+        window.setVerticalSyncEnabled(true);
     }
 
     bool isOpen() const { return window.isOpen(); }
